@@ -5,9 +5,9 @@ metadata:
   annotations: null
   generation: 1
   labels:
-    trivy-operator.resource.name: proxy
-    trivy-operator.resource.kind: Role
-    app.kubernetes.io/managed-by: trivy-operator
+    annotation.trivy-operator.resource.name: proxy
+    annotation.trivy-operator.resource.kind: Role
+    annotation.app.kubernetes.io/managed-by: trivy-operator
   name: role-proxy
   namespace: default
   ownerReferences:

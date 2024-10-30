@@ -10,11 +10,11 @@ metadata:
   labels:
     resource-spec-hash: 65df6ff459
     plugin-config-hash: 659b7b9c47
-    trivy-operator.container.name: coredns
-    trivy-operator.resource.kind: ReplicaSet
-    trivy-operator.resource.name: coredns-558bd4d5da
-    trivy-operator.resource.namespace: kube-system
-    app.kubernetes.io/managed-by: trivy-operator
+    annotation.trivy-operator.container.name: coredns
+    annotation.trivy-operator.resource.kind: ReplicaSet
+    annotation.trivy-operator.resource.name: coredns-558bd4d5da
+    annotation.trivy-operator.resource.namespace: kube-system
+    annotation.app.kubernetes.io/managed-by: trivy-operator
   name: replicaset-coredns-558bd4d5da-coredns
   namespace: kube-system
   ownerReferences:
