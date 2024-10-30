@@ -6,10 +6,10 @@ metadata:
   labels:
     plugin-config-hash: <HASH>
     resource-spec-hash: <HASH>
-    trivy-operator.resource.kind: CronJob
-    trivy-operator.resource.name: hello
-    trivy-operator.resource.namespace: default
-    app.kubernetes.io/managed-by: trivy-operator
+    annotation.trivy-operator.resource.kind: CronJob
+    annotation.trivy-operator.resource.name: hello
+    annotation.trivy-operator.resource.namespace: default
+    annotation.app.kubernetes.io/managed-by: trivy-operator
   name: cronjob-hello
   namespace: default
   ownerReferences:
