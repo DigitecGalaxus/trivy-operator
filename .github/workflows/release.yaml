@@ -52,16 +52,16 @@ jobs:
   #   needs:
   #     - tests
   #   runs-on: ubuntu-latest
-  #   timeout-minutes: 30
+  #   timeout-minutes: 15
   #   steps:
   #     - name: Checkout code
   #       uses: actions/checkout@v4
   #     - name: Setup Go
   #       uses: actions/setup-go@v5
   #       with:
-  #         go-version-file: go.mod
+  #         go-version: ${{ env.GO_VERSION }}
   #     - name: Install tools
-  #       uses: aquaproj/aqua-installer@v4.0.0
+  #       uses: aquaproj/aqua-installer@v3.1.1
   #       with:
   #         aqua_version: v1.25.0
   #     - name: Setup Kubernetes cluster (KIND)
@@ -127,11 +127,12 @@ jobs:
           cache: false
       - name: Install cosign
         uses: sigstore/cosign-installer@3454372f43399081ed03b604cb2d021dabca52bb # was: sigstore/cosign-installer@v3.8.2
-      - name: Login to docker.io registry
+      - name: Login to ghcr registry
         uses: docker/login-action@74a5d142397b4f367a81961eba4e8cd7edddf772 # was: docker/login-action@v3.4.0
         with:
-          username: ${{ secrets.DOCKERHUB_USER }}
-          password: ${{ secrets.DOCKERHUB_TOKEN }}
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
       - name: Release
         uses: goreleaser/goreleaser-action@e435ccd777264be153ace6237001ef4d979d3a7a # was: goreleaser/goreleaser-action@v6
         with:
@@ -140,10 +141,3 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           COSIGN_EXPERIMENTAL: 1
-      - name: Repository Dispatch Publish Helm Chart
-        if: ${{ steps.latest_tag.outputs.tag == steps.chart_version.outputs.app_version }}
-        uses: peter-evans/repository-dispatch@ff45666b9427631e3450c54a1bcbee4d9ff4d7c0 # was: peter-evans/repository-dispatch@v3
-        with:
-          token: ${{ secrets.GITHUB_TOKEN }}
-          event-type: publish-chart
-          client-payload: '{"action": "chart-and-app-release"}'
