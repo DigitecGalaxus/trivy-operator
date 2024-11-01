@@ -56,10 +56,11 @@ var _ = Describe("Workload controller", func() {
 		job.ResourceVersion = ""
 		job.CreationTimestamp = metav1.Time{}
 		job.ManagedFields = nil
-		job.Spec.Selector.MatchLabels["controller-uid"] = "<CONTROLLER-UID>"
-		job.Spec.Template.Labels["controller-uid"] = "<CONTROLLER-UID>"
-		job.Spec.Template.Labels["resource-spec-hash"] = "<HASH>"
-		job.Labels["resource-spec-hash"] = "<HASH>"
+		job.Spec.Selector.MatchLabels["annotation.controller-uid"] = "<CONTROLLER-UID>"
+		job.Spec.Template.Labels["annotation.controller-uid"] = "<CONTROLLER-UID>"
+		job.Spec.Template.Labels["annotation.resource-spec-hash"] = "<HASH>"
+		job.Labels["annotation.resource-spec-hash"] = "<HASH>"
+		job.Labels["annotation.controller-uid"] = "<CONTROLLER-UID>"
 		for i := range job.Spec.Template.Spec.InitContainers {
 			job.Spec.Template.Spec.InitContainers[i].Name = "<INIT-CONTAINER-NAME>"
 		}
@@ -100,7 +101,7 @@ var _ = Describe("Workload controller", func() {
 		ca.OwnerReferences[0].UID = ""
 
 		ca.Labels["plugin-config-hash"] = "<HASH>"
-		ca.Labels["resource-spec-hash"] = "<HASH>"
+		ca.Labels["annotation.resource-spec-hash"] = "<HASH>"
 		ca.Report.UpdateTimestamp = metav1.Time{}
 		sort.Sort(ByCheckID(ca.Report.Checks))
 		return ca
