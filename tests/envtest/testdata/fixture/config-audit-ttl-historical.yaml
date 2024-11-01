@@ -8,7 +8,7 @@ metadata:
   creationTimestamp: 2022-12-08T15:50:37Z
   generation: 1
   labels:
-    resource-spec-hash: 65df6ff459
+    annotation.resource-spec-hash: 65df6ff459
     plugin-config-hash: 659b7b9c47
     annotation.trivy-operator.container.name: coredns
     annotation.trivy-operator.resource.kind: ReplicaSet
