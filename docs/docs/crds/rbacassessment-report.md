@@ -18,7 +18,7 @@ metadata:
   generation: 1
   labels:
     plugin-config-hash: 659b7b9c46
-    resource-spec-hash: 59b6bf95c6
+    annotation.resource-spec-hash: 59b6bf95c6
     annotation.trivy-operator.resource.kind: Role
     annotation.trivy-operator.resource.name-hash: 868458b9d6
     annotation.trivy-operator.resource.namespace: default

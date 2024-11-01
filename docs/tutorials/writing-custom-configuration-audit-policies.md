@@ -177,7 +177,7 @@ metadata:
     annotation.trivy-operator.resource.name: test
     annotation.trivy-operator.resource.namespace: default
     plugin-config-hash: df767ff5f
-    resource-spec-hash: 7c96769cf
+    annotation.resource-spec-hash: 7c96769cf
   name: configmap-test
   namespace: default
   ownerReferences:

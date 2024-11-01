@@ -36,7 +36,7 @@ changelog:
       - ^release
 dockers:
   - image_templates:
-      - ghcr.io/aquasecurity/trivy-operator:{{ .Version }}-amd64
+      - ghcr.io/digitecgalaxus/trivy-operator:{{ .Version }}-amd64
     use: buildx
     goos: linux
     dockerfile: build/trivy-operator/Dockerfile
@@ -50,12 +50,12 @@ dockers:
       - --label=org.opencontainers.image.vendor=Aqua Security
       - --label=org.opencontainers.image.version={{ .Version }}
       - --label=org.opencontainers.image.created={{ .Date }}
-      - --label=org.opencontainers.image.source=https://github.com/aquasecurity/trivy-operator
+      - --label=org.opencontainers.image.source=https://github.com/digitecgalaxus/trivy-operator
       - --label=org.opencontainers.image.revision={{ .FullCommit }}
       - --label=org.opencontainers.image.documentation=https://aquasecurity.github.io/trivy-operator/v{{
         .Version }}/
       - --platform=linux/amd64
 docker_manifests:
-  - name_template: ghcr.io/aquasecurity/trivy-operator:{{ .Version }}
+  - name_template: ghcr.io/digitecgalaxus/trivy-operator:{{ .Version }}
     image_templates:
-      - ghcr.io/aquasecurity/trivy-operator:{{ .Version }}-amd64
+      - ghcr.io/digitecgalaxus/trivy-operator:{{ .Version }}-amd64
