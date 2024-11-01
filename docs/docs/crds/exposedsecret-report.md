@@ -14,7 +14,7 @@ metadata:
   creationTimestamp: "2022-06-29T14:25:54Z"
   generation: 2
   labels:
-    resource-spec-hash: 8495697ff5
+    annotation.resource-spec-hash: 8495697ff5
     annotation.trivy-operator.container.name: app
     annotation.trivy-operator.resource.kind: ReplicaSet
     annotation.trivy-operator.resource.name: app-67b77f5965

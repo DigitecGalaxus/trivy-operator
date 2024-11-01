@@ -69,7 +69,7 @@ changelog:
       order: 9999
 dockers:
   - image_templates:
-      - "docker.io/martinwrona/trivy-operator:{{ .Version }}-amd64"
+      - "ghcr.io/digitecgalaxus/trivy-operator:{{ .Version }}-amd64"
     use: buildx
     goos: linux
     dockerfile: build/trivy-operator/Dockerfile
@@ -82,12 +82,12 @@ dockers:
       - "--label=org.opencontainers.image.vendor=Aqua Security"
       - "--label=org.opencontainers.image.version={{ .Version }}"
       - "--label=org.opencontainers.image.created={{ .Date }}"
-      - "--label=org.opencontainers.image.source=https://github.com/aquasecurity/trivy-operator"
+      - "--label=org.opencontainers.image.source=https://github.com/digitecgalaxus/trivy-operator"
       - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
       - "--label=org.opencontainers.image.documentation=https://aquasecurity.github.io/trivy-operator/v{{ .Version }}/"
       - "--platform=linux/amd64"
   - image_templates:
-      - "docker.io/martinwrona/trivy-operator:{{ .Version }}-ubi9-amd64"
+      - "ghcr.io/digitecgalaxus/trivy-operator:{{ .Version }}-ubi9-amd64"
     use: buildx
     goos: linux
     dockerfile: build/trivy-operator/Dockerfile.ubi9
@@ -100,12 +100,12 @@ dockers:
       - "--label=org.opencontainers.image.vendor=Aqua Security"
       - "--label=org.opencontainers.image.version={{ .Version }}"
       - "--label=org.opencontainers.image.created={{ .Date }}"
-      - "--label=org.opencontainers.image.source=https://github.com/aquasecurity/trivy-operator"
+      - "--label=org.opencontainers.image.source=https://github.com/digitecgalaxus/trivy-operator"
       - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
       - "--label=org.opencontainers.image.documentation=https://aquasecurity.github.io/trivy-operator/v{{ .Version }}/"
       - "--platform=linux/amd64"
   - image_templates:
-      - "docker.io/martinwrona/trivy-operator:{{ .Version }}-arm64"
+      - "ghcr.io/digitecgalaxus/trivy-operator:{{ .Version }}-arm64"
     use: buildx
     goos: linux
     dockerfile: build/trivy-operator/Dockerfile
@@ -118,12 +118,12 @@ dockers:
       - "--label=org.opencontainers.image.vendor=Aqua Security"
       - "--label=org.opencontainers.image.version={{ .Version }}"
       - "--label=org.opencontainers.image.created={{ .Date }}"
-      - "--label=org.opencontainers.image.source=https://github.com/aquasecurity/trivy-operator"
+      - "--label=org.opencontainers.image.source=https://github.com/digitecgalaxus/trivy-operator"
       - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
       - "--label=org.opencontainers.image.documentation=https://aquasecurity.github.io/trivy-operator/v{{ .Version }}/"
       - "--platform=linux/arm64"
   - image_templates:
-      - "docker.io/martinwrona/trivy-operator:{{ .Version }}-ubi9-arm64"
+      - "ghcr.io/digitecgalaxus/trivy-operator:{{ .Version }}-ubi9-arm64"
     use: buildx
     goos: linux
     dockerfile: build/trivy-operator/Dockerfile.ubi9
@@ -136,12 +136,12 @@ dockers:
       - "--label=org.opencontainers.image.vendor=Aqua Security"
       - "--label=org.opencontainers.image.version={{ .Version }}"
       - "--label=org.opencontainers.image.created={{ .Date }}"
-      - "--label=org.opencontainers.image.source=https://github.com/aquasecurity/trivy-operator"
+      - "--label=org.opencontainers.image.source=https://github.com/digitecgalaxus/trivy-operator"
       - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
       - "--label=org.opencontainers.image.documentation=https://aquasecurity.github.io/trivy-operator/v{{ .Version }}/"
       - "--platform=linux/arm64"
   - image_templates:
-      - "docker.io/martinwrona/trivy-operator:{{ .Version }}-s390x"
+      - "ghcr.io/digitecgalaxus/trivy-operator:{{ .Version }}-s390x"
     use: buildx
     goos: linux
     dockerfile: build/trivy-operator/Dockerfile
@@ -154,12 +154,12 @@ dockers:
       - "--label=org.opencontainers.image.vendor=Aqua Security"
       - "--label=org.opencontainers.image.version={{ .Version }}"
       - "--label=org.opencontainers.image.created={{ .Date }}"
-      - "--label=org.opencontainers.image.source=https://github.com/aquasecurity/trivy-operator"
+      - "--label=org.opencontainers.image.source=https://github.com/digitecgalaxus/trivy-operator"
       - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
       - "--label=org.opencontainers.image.documentation=https://aquasecurity.github.io/trivy-operator/v{{ .Version }}/"
       - "--platform=linux/s390x"
   - image_templates:
-      - "docker.io/martinwrona/trivy-operator:{{ .Version }}-ppc64le"
+      - "ghcr.io/digitecgalaxus/trivy-operator:{{ .Version }}-ppc64le"
     use: buildx
     goos: linux
     dockerfile: build/trivy-operator/Dockerfile
@@ -172,12 +172,12 @@ dockers:
       - "--label=org.opencontainers.image.vendor=Aqua Security"
       - "--label=org.opencontainers.image.version={{ .Version }}"
       - "--label=org.opencontainers.image.created={{ .Date }}"
-      - "--label=org.opencontainers.image.source=https://github.com/aquasecurity/trivy-operator"
+      - "--label=org.opencontainers.image.source=https://github.com/digitecgalaxus/trivy-operator"
       - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
       - "--label=org.opencontainers.image.documentation=https://aquasecurity.github.io/trivy-operator/v{{ .Version }}/"
       - "--platform=linux/ppc64le"
   - image_templates:
-      - "docker.io/martinwrona/trivy-operator:{{ .Version }}-ubi9-s390x"
+      - "ghcr.io/digitecgalaxus/trivy-operator:{{ .Version }}-ubi9-s390x"
     use: buildx
     goos: linux
     dockerfile: build/trivy-operator/Dockerfile.ubi9
@@ -190,12 +190,12 @@ dockers:
       - "--label=org.opencontainers.image.vendor=Aqua Security"
       - "--label=org.opencontainers.image.version={{ .Version }}"
       - "--label=org.opencontainers.image.created={{ .Date }}"
-      - "--label=org.opencontainers.image.source=https://github.com/aquasecurity/trivy-operator"
+      - "--label=org.opencontainers.image.source=https://github.com/digitecgalaxus/trivy-operator"
       - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
       - "--label=org.opencontainers.image.documentation=https://aquasecurity.github.io/trivy-operator/v{{ .Version }}/"
       - "--platform=linux/s390x"
   - image_templates:
-      - "docker.io/martinwrona/trivy-operator:{{ .Version }}-ubi9-ppc64le"
+      - "ghcr.io/digitecgalaxus/trivy-operator:{{ .Version }}-ubi9-ppc64le"
     use: buildx
     goos: linux
     dockerfile: build/trivy-operator/Dockerfile.ubi9
@@ -208,23 +208,23 @@ dockers:
       - "--label=org.opencontainers.image.vendor=Aqua Security"
       - "--label=org.opencontainers.image.version={{ .Version }}"
       - "--label=org.opencontainers.image.created={{ .Date }}"
-      - "--label=org.opencontainers.image.source=https://github.com/aquasecurity/trivy-operator"
+      - "--label=org.opencontainers.image.source=https://github.com/digitecgalaxus/trivy-operator"
       - "--label=org.opencontainers.image.revision={{ .FullCommit }}"
       - "--label=org.opencontainers.image.documentation=https://aquasecurity.github.io/trivy-operator/v{{ .Version }}/"
       - "--platform=linux/ppc64le"
 docker_manifests:
-  - name_template: "martinwrona/trivy-operator:{{ .Version }}"
+  - name_template: "ghcr.io/digitecgalaxus/trivy-operator:{{ .Version }}"
     image_templates:
-      - "martinwrona/trivy-operator:{{ .Version }}-amd64"
-      - "martinwrona/trivy-operator:{{ .Version }}-arm64"
-      - "martinwrona/trivy-operator:{{ .Version }}-s390x"
-      - "martinwrona/trivy-operator:{{ .Version }}-ppc64le"
-  - name_template: "martinwrona/trivy-operator:{{ .Version }}-ubi9"
+      - "ghcr.io/digitecgalaxus/trivy-operator:{{ .Version }}-amd64"
+      - "ghcr.io/digitecgalaxus/trivy-operator:{{ .Version }}-arm64"
+      - "ghcr.io/digitecgalaxus/trivy-operator:{{ .Version }}-s390x"
+      - "ghcr.io/digitecgalaxus/trivy-operator:{{ .Version }}-ppc64le"
+  - name_template: "ghcr.io/digitecgalaxus/trivy-operator:{{ .Version }}-ubi9"
     image_templates:
-      - "martinwrona/trivy-operator:{{ .Version }}-ubi9-amd64"
-      - "martinwrona/trivy-operator:{{ .Version }}-ubi9-arm64"
-      - "martinwrona/trivy-operator:{{ .Version }}-ubi9-s390x"
-      - "martinwrona/trivy-operator:{{ .Version }}-ubi9-ppc64le"
+      - "ghcr.io/digitecgalaxus/trivy-operator:{{ .Version }}-ubi9-amd64"
+      - "ghcr.io/digitecgalaxus/trivy-operator:{{ .Version }}-ubi9-arm64"
+      - "ghcr.io/digitecgalaxus/trivy-operator:{{ .Version }}-ubi9-s390x"
+      - "ghcr.io/digitecgalaxus/trivy-operator:{{ .Version }}-ubi9-ppc64le"
 
 signs:
   - cmd: cosign
