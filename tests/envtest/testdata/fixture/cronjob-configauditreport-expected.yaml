@@ -5,7 +5,7 @@ metadata:
   generation: 1
   labels:
     plugin-config-hash: <HASH>
-    resource-spec-hash: <HASH>
+    annotation.resource-spec-hash: <HASH>
     annotation.trivy-operator.resource.kind: CronJob
     annotation.trivy-operator.resource.name: hello
     annotation.trivy-operator.resource.namespace: default

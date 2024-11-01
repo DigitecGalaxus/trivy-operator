@@ -16,7 +16,7 @@ metadata:
   creationTimestamp: "2023-07-10T09:37:21Z"
   generation: 1
   labels:
-    resource-spec-hash: 796669cd5d
+    annotation.resource-spec-hash: 796669cd5d
     annotation.trivy-operator.container.name: kube-apiserver
     annotation.trivy-operator.resource.kind: Pod
     annotation.trivy-operator.resource.name: kube-apiserver-kind-control-plane
