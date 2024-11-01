@@ -1021,14 +1021,14 @@ func TestObjectResolver_ReportOwner(t *testing.T) {
 			Name:      "pi",
 			UID:       "ef340242-b677-485e-b506-2ac1dde48bca",
 			Labels: map[string]string{
-				"controller-uid": "ef340242-b677-485e-b506-2ac1dde48bca",
+				"annotation.controller-uid": "ef340242-b677-485e-b506-2ac1dde48bca",
 				"job-name":       "pi",
 			},
 		},
 		Spec: batchv1.JobSpec{
 			Selector: &metav1.LabelSelector{
 				MatchLabels: map[string]string{
-					"controller-uid": "ef340242 - b677 - 485e-b506-2ac1dde48bca",
+					"annotation.controller-uid": "ef340242 - b677 - 485e-b506-2ac1dde48bca",
 				},
 			},
 		},
@@ -1042,7 +1042,7 @@ func TestObjectResolver_ReportOwner(t *testing.T) {
 			Namespace: corev1.NamespaceDefault,
 			Name:      "pi-wnbbm",
 			Labels: map[string]string{
-				"controller-uid": "ef340242-b677-485e-b506-2ac1dde48bca",
+				"annotation.controller-uid": "ef340242-b677-485e-b506-2ac1dde48bca",
 				"job-name":       "pi",
 			},
 			UID: "3921e0cd-1852-4c1d-ab0a-9721f3f28276",

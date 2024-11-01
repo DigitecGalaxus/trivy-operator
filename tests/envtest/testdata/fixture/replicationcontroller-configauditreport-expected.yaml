@@ -5,7 +5,7 @@ metadata:
   generation: 1
   labels:
     plugin-config-hash: <HASH>
-    resource-spec-hash: <HASH>
+    annotation.resource-spec-hash: <HASH>
     annotation.trivy-operator.resource.kind: ReplicationController
     annotation.trivy-operator.resource.name: nginx
     annotation.trivy-operator.resource.namespace: default
