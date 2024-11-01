@@ -7,7 +7,8 @@ metadata:
   generation: 1
   labels:
     app.kubernetes.io/managed-by: trivy-operator
-    resource-spec-hash: <HASH>
+    annotation.resource-spec-hash: <HASH>
+    annotation.controller-uid: <CONTROLLER-UID>
     annotation.trivy-operator.resource.kind: Job
     annotation.trivy-operator.resource.name: pi
     annotation.trivy-operator.resource.namespace: default
@@ -18,17 +19,17 @@ spec:
   completionMode: NonIndexed
   completions: 1
   parallelism: 1
+  manualSelector: true
   selector:
     matchLabels:
-      controller-uid: <CONTROLLER-UID>
+      annotation.controller-uid: <CONTROLLER-UID>
   suspend: false
   template:
     metadata:
       labels:
         app.kubernetes.io/managed-by: trivy-operator
-        controller-uid: <CONTROLLER-UID>
-        job-name: scan-vulnerabilityreport-5664bcd7b8
-        resource-spec-hash: <HASH>
+        annotation.controller-uid: <CONTROLLER-UID>
+        annotation.resource-spec-hash: <HASH>
         annotation.trivy-operator.resource.kind: Job
         annotation.trivy-operator.resource.name: pi
         annotation.trivy-operator.resource.namespace: default

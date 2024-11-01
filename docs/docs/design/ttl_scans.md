@@ -35,7 +35,7 @@ metadata:
   annotations:
     trivy-operator.aquasecurity.github.io/report-ttl: 24h
   labels:
-    resource-spec-hash: 86b58dcb99
+    annotation.resource-spec-hash: 86b58dcb99
     annotation.trivy-operator.container.name: manager
     annotation.trivy-operator.resource.kind: ReplicaSet
     annotation.trivy-operator.resource.name: source-controller-b5d5cfdf4
