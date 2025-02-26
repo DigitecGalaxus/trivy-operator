@@ -24,6 +24,7 @@ type ReportBuilder struct {
 	scheme                  *runtime.Scheme
 	controller              client.Object
 	container               string
+	namespaceowner			string
 	hash                    string
 	data                    v1alpha1.SbomReportData
 	resourceLabelsToInclude []string
@@ -44,6 +45,11 @@ func (b *ReportBuilder) Controller(controller client.Object) *ReportBuilder {
 
 func (b *ReportBuilder) Container(name string) *ReportBuilder {
 	b.container = name
+	return b
+}
+
+func (b *ReportBuilder) NamespaceOwner(name string) *ReportBuilder {
+	b.namespaceowner = name
 	return b
 }
 
@@ -106,6 +112,10 @@ func (b *ReportBuilder) NamespacedReport() (v1alpha1.SbomReport, error) {
 	kube.AppendResourceLabels(b.resourceLabelsToInclude, b.controller.GetLabels(), reportLabels)
 	// append custom labels by config to report
 	kube.AppendCustomLabels(b.additionalReportLabels, reportLabels)
+
+	if b.namespaceowner != "" {
+		reportLabels[trivyoperator.LabelNamespaceOwner] = b.namespaceowner
+	}
 
 	if b.hash != "" {
 		reportLabels[trivyoperator.LabelResourceSpecHash] = b.hash

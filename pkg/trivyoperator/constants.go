@@ -23,6 +23,7 @@ const (
 	LabelResourceName      = "annotation.trivy-operator.resource.name"
 	LabelResourceNameHash  = "annotation.trivy-operator.resource.name-hash"
 	LabelResourceNamespace = "annotation.trivy-operator.resource.namespace"
+	LabelNamespaceOwner    = "annotation.trivy-operator.resource.namespace-owner"
 	LabelContainerName     = "annotation.trivy-operator.container.name"
 	LabelResourceSpecHash  = "annotation.resource-spec-hash"
 	LabelControllerUid     = "annotation.controller-uid"
