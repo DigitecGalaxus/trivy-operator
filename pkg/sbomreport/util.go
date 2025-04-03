@@ -99,6 +99,10 @@ func cycloneDxPropertiesToReportProperties(properties *[]cdx.Property) []v1alpha
 	reportProperties := make([]v1alpha1.Property, 0)
 	if properties != nil {
 		for _, p := range *properties {
+			if isBlacklisted(p.Name) == true {
+				continue
+			}
+
 			reportProperties = append(reportProperties, v1alpha1.Property{
 				Name:  p.Name,
 				Value: p.Value,
@@ -117,4 +121,15 @@ func cycloneDxDependenciesToReportDependencies(dependencies *[]cdx.Dependency) *
 		})
 	}
 	return &reportDependencies
+}
+
+func isBlacklisted(value string) bool {
+	// reduce SBOM size
+	blacklist := map[string]bool{
+		"aquasecurity:trivy:LayerDiffID": true,
+		"aquasecurity:trivy:LayerDigest": true,
+	}
+
+	_, exists := blacklist[value]
+	return exists
 }
