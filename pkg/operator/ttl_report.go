@@ -57,6 +57,9 @@ func (r *TTLReportReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	if r.Config.ClusterSbomCacheEnable {
 		ttlResources = append(ttlResources, kube.Resource{ForObject: &v1alpha1.ClusterSbomReport{}})
 	}
+	if r.Config.SbomGenerationEnable {
+		ttlResources = append(ttlResources, kube.Resource{ForObject: &v1alpha1.SbomReport{}})
+	}
 	installModePredicate, err := predicate.InstallModePredicate(r.Config)
 	if err != nil {
 		return err
@@ -137,7 +140,7 @@ func (r *TTLReportReconciler) applicableForDeletion(ctx context.Context, report 
 			reportKind = "RbacAssessmentReport"
 		}
 	}
-	if reportKind == "VulnerabilityReport" || reportKind == "ExposedSecretReport" || reportKind == "ClusterSbomReport" {
+	if reportKind == "VulnerabilityReport" || reportKind == "ExposedSecretReport" || reportKind == "ClusterSbomReport" || reportKind == "SbomReport" {
 		return true
 	}
 	if ttlReportAnnotationStr == time.Duration(0).String() { // check if it marked as historical report
