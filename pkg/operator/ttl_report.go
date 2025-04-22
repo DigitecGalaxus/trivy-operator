@@ -120,7 +120,7 @@ func (r *TTLReportReconciler) DeleteReportIfExpired(ctx context.Context, namespa
 
 func (r *TTLReportReconciler) applicableForDeletion(report client.Object, ttlReportAnnotationStr string) bool {
 	reportKind := report.GetObjectKind().GroupVersionKind().Kind
-	if reportKind == "VulnerabilityReport" || reportKind == "ExposedSecretReport" || reportKind == "ClusterSbomReport" {
+	if reportKind == "VulnerabilityReport" || reportKind == "ExposedSecretReport" || reportKind == "ClusterSbomReport" || reportKind == "SbomReport" {
 		return true
 	}
 	if ttlReportAnnotationStr == time.Duration(0).String() { // check if it marked as historical report
