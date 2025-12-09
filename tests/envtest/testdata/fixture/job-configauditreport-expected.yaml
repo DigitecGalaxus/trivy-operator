@@ -9,7 +9,7 @@ metadata:
     annotation.trivy-operator.resource.kind: Job
     annotation.trivy-operator.resource.name: pi
     annotation.trivy-operator.resource.namespace: default
-    annotation.app.kubernetes.io/managed-by: trivy-operator
+    app.kubernetes.io/managed-by: trivy-operator
   name: job-pi
   namespace: default
   ownerReferences:

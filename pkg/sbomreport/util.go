@@ -99,7 +99,7 @@ func cycloneDxPropertiesToReportProperties(properties *[]cdx.Property) []v1alpha
 	reportProperties := make([]v1alpha1.Property, 0)
 	if properties != nil {
 		for _, p := range *properties {
-			if isBlacklisted(p.Name) == true {
+			if isBlacklisted(p.Name) {
 				continue
 			}
 

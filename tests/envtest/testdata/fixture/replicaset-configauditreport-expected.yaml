@@ -9,7 +9,7 @@ metadata:
     annotation.trivy-operator.resource.kind: ReplicaSet
     annotation.trivy-operator.resource.name: wordpress-84bbf6f4dd
     annotation.trivy-operator.resource.namespace: default
-    annotation.app.kubernetes.io/managed-by: trivy-operator
+    app.kubernetes.io/managed-by: trivy-operator
   name: replicaset-wordpress-84bbf6f4dd
   namespace: default
   ownerReferences:
