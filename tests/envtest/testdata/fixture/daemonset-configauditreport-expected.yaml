@@ -9,7 +9,7 @@ metadata:
     annotation.trivy-operator.resource.kind: DaemonSet
     annotation.trivy-operator.resource.name: fluentd-elasticsearch
     annotation.trivy-operator.resource.namespace: default
-    annotation.app.kubernetes.io/managed-by: trivy-operator
+    app.kubernetes.io/managed-by: trivy-operator
   name: daemonset-fluentd-elasticsearch
   namespace: default
   ownerReferences:

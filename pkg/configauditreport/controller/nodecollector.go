@@ -190,8 +190,8 @@ func (r *NodeCollectorJobController) processCompleteScanJob(ctx context.Context,
 		}
 		labels := clusterInfraReport.GetLabels()
 		// Extract workload kind and name from report labels
-		workloadKind := labels["trivy-operator.resource.kind"]
-		workloadName := labels["trivy-operator.resource.name"]
+		workloadKind := labels["annotation.trivy-operator.resource.kind"]
+		workloadName := labels["annotation.trivy-operator.resource.name"]
 		reportPath := filepath.Join(clusterInfraReportDir, fmt.Sprintf("%s-%s.json", workloadKind, workloadName))
 		err = os.WriteFile(reportPath, reportData, 0o600)
 		if err != nil {
