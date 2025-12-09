@@ -9,7 +9,7 @@ metadata:
     annotation.trivy-operator.resource.kind: CronJob
     annotation.trivy-operator.resource.name: hello
     annotation.trivy-operator.resource.namespace: default
-    annotation.app.kubernetes.io/managed-by: trivy-operator
+    app.kubernetes.io/managed-by: trivy-operator
   name: cronjob-hello
   namespace: default
   ownerReferences:

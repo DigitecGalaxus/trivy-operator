@@ -170,7 +170,7 @@ var _ = Describe("Workload controller", func() {
 		ca.Kind = "InfraAssessmentReport"
 		ca.UID = ""
 		ca.SetLabels(map[string]string{
-		    "annotation.app.kubernetes.io/managed-by":      "trivy-operator",
+			"annotation.app.kubernetes.io/managed-by":      "trivy-operator",
 			"annotation.trivy-operator.resource.kind":      "Pod",
 			"annotation.trivy-operator.resource.namespace": "kube-system",
 		})

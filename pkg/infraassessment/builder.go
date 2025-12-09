@@ -198,8 +198,8 @@ func (b *ReportBuilder) Write(ctx context.Context, writer Writer) error {
 			}
 
 			// Extract workload kind and name from report labels
-			workloadKind := report.Labels["trivy-operator.resource.kind"]
-			workloadName := report.Labels["trivy-operator.resource.name"]
+			workloadKind := report.Labels["annotation.trivy-operator.resource.kind"]
+			workloadName := report.Labels["annotation.trivy-operator.resource.name"]
 
 			reportPath := filepath.Join(infraAssessmentDir, fmt.Sprintf("%s-%s.json", workloadKind, workloadName))
 			err = os.WriteFile(reportPath, reportData, 0o600)
