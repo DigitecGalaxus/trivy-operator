@@ -51,17 +51,17 @@ jobs:
   #   timeout-minutes: 15
   #   steps:
   #     - name: Checkout code
-  uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
+  #       uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5 # v4
   #     - name: Setup Go
-  uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
+  #       uses: actions/setup-go@40f1582b2485089dde7abd97c1529aa768e1baff # v5
   #       with:
   #         go-version: ${{ env.GO_VERSION }}
   #     - name: Install tools
-  uses: aquaproj/aqua-installer@e2d0136abcf70b7a2f6f505720640750557c4b33 # v3.1.1
+  #       uses: aquaproj/aqua-installer@e2d0136abcf70b7a2f6f505720640750557c4b33 # v3.1.1
   #       with:
   #         aqua_version: v1.25.0
   #     - name: Setup Kubernetes cluster (KIND)
-  uses: engineerd/setup-kind@71e45b960fc8dd50b4aeabf6eb6ef2ca0920b4c1 # v0.6.2
+  #       uses: engineerd/setup-kind@71e45b960fc8dd50b4aeabf6eb6ef2ca0920b4c1 # v0.6.2
   #       with:
   #         version: ${{ env.KIND_VERSION }}
   #         image: ${{ env.KIND_IMAGE }}
