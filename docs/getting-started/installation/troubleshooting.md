@@ -291,12 +291,11 @@ We get the output:
 
 ```sh
 app.kubernetes.io/managed-by: trivy-operator
-controller-uid: 10aba790-6ee6-4802-81ed-ad77908ea10d
-job-name: scan-vulnerabilityreport-6dfb8dc69f
-resource-spec-hash: 764dd688f
-trivy-operator.resource.kind: ReplicaSet
-trivy-operator.resource.name: trivy-operator-6b65576869
-trivy-operator.resource.namespace: trivy-system
+annotation.controller-uid: 10aba790-6ee6-4802-81ed-ad77908ea10d
+annotation.resource-spec-hash: 764dd688f
+annotation.trivy-operator.resource.kind: ReplicaSet
+annotation.trivy-operator.resource.name: trivy-operator-6b65576869
+annotation.trivy-operator.resource.namespace: trivy-system
 vulnerabilityReport.scanner: Trivy
 ```
 

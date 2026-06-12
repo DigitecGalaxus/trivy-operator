@@ -12,6 +12,21 @@
 </a>
 [![Artifact Hub](https://img.shields.io/endpoint?url=https://artifacthub.io/badge/repository/trivy-operator)](https://artifacthub.io/packages/helm/trivy-operator/trivy-operator)
 
+# Reason for the Fork
+We're running AKS with Azure CNI Powered by Cilium.
+Without the fork we exhaust the cilium identity buffer because of the cardinality of trivy job/pod labels.
+At the moment it's not possible to configure which labels should be used by cilium as it would be possible with a self managed CNI. [See cilium doc](https://docs.cilium.io/en/stable/operations/performance/scalability/identity-relevant-labels/)
+We created an issue for AKS without the expectation to be solve it in the near feature. [See github issue](https://github.com/Azure/AKS/issues/4608)
+
+As a workaround we changed the label assignment to the by default ignored "annotation.*".
+Additionaly Azure CNI Powered by Cilium does not exclude the controller-uid label so that we had to change the job<->pod default behavior using "manualSelector: true" in the job definition.
+
+### Release
+```
+git tag -a v0.0.1 -m 'Release v0.0.1'
+git push origin v0.0.1
+```
+
 # Introduction
 
 The Trivy Operator leverages [Trivy](https://github.com/aquasecurity/trivy) to continuously scan your Kubernetes cluster for security issues. The scans are summarised in security reports as Kubernetes [Custom Resource Definitions], which become accessible through the Kubernetes API. The Operator does this by watching Kubernetes for state changes and automatically triggering security scans in response. For example, a vulnerability scan is initiated when a new Pod is created.
@@ -67,7 +82,7 @@ Install the Helm Chart:
    helm install trivy-operator aqua/trivy-operator \
      --namespace trivy-system \
      --create-namespace \
-     --version 0.21.4
+     --version 0.32.1
 ```
 
 #### Option 2: Install from OCI registry (supported in Helm v3.8.0+)
@@ -78,7 +93,7 @@ Install the Helm Chart:
    helm install trivy-operator oci://ghcr.io/aquasecurity/helm-charts/trivy-operator \
      --namespace trivy-system \
      --create-namespace \
-     --version 0.21.4
+     --version 0.32.1
 ```
 
 This will install the Trivy Helm Chart into the `trivy-system` namespace and start triggering the scans.

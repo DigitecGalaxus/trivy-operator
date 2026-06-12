@@ -5,20 +5,20 @@ import (
 	"fmt"
 	"strings"
 
+	containerimage "github.com/google/go-containerregistry/pkg/name"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/aquasecurity/trivy-operator/pkg/apis/aquasecurity/v1alpha1"
 	"github.com/aquasecurity/trivy-operator/pkg/docker"
 	"github.com/aquasecurity/trivy-operator/pkg/trivyoperator"
-	containerimage "github.com/google/go-containerregistry/pkg/name"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 const (
 	GCPCR_Image_Regex  = `^(us\.|eu\.|asia\.)?gcr\.io.*|^([a-zA-Z0-9-]+)-*-*.docker\.pkg\.dev.*`
-	AWSECR_Image_Regex = "^\\d+\\.dkr\\.ecr\\.(\\w+-\\w+-\\d+)\\.amazonaws\\.com\\/"
+	AWSECR_Image_Regex = `^\d+\.dkr\.ecr\.(\w+-\w+-\d+)\.amazonaws\.com/`
 	// SkipDirsAnnotation annotation  example: trivy-operator.aquasecurity.github.io/skip-dirs: "/tmp,/home"
 	SkipDirsAnnotation = "trivy-operator.aquasecurity.github.io/skip-dirs"
 	// SkipFilesAnnotation example: trivy-operator.aquasecurity.github.io/skip-files: "/src/Gemfile.lock,/examplebinary"
@@ -51,22 +51,6 @@ type PodSpecMgr interface {
 func NewPodSpecMgr(config Config) PodSpecMgr {
 	mode := config.GetMode()
 	command := config.GetCommand()
-	if command == Image {
-		switch mode {
-		case Standalone:
-			return &ImageJobSpecMgr{
-				getPodSpecFunc: GetPodSpecForStandaloneMode,
-			}
-		case ClientServer:
-			return &ImageJobSpecMgr{
-				getPodSpecFunc: GetPodSpecForClientServerMode,
-			}
-		default:
-			return &ImageJobSpecMgr{
-				getPodSpecFunc: GetPodSpecForStandaloneMode,
-			}
-		}
-	}
 
 	if command == Filesystem || command == Rootfs {
 		switch mode {
@@ -85,7 +69,7 @@ func NewPodSpecMgr(config Config) PodSpecMgr {
 		}
 	}
 	return &ImageJobSpecMgr{
-		getPodSpecFunc: GetPodSpecForStandaloneMode,
+		getPodSpecFunc: GetPodSpecForImageScan,
 	}
 }
 
@@ -132,7 +116,7 @@ func getScanResultVolumeMount() corev1.VolumeMount {
 	}
 }
 
-func ConfigWorkloadAnnotationEnvVars(workload client.Object, annotation string, envVarName string, trivyConfigName string, configKey string) corev1.EnvVar {
+func ConfigWorkloadAnnotationEnvVars(workload client.Object, annotation, envVarName, trivyConfigName, configKey string) corev1.EnvVar {
 	if value, ok := workload.GetAnnotations()[annotation]; ok {
 		return corev1.EnvVar{
 			Name:  envVarName,
@@ -217,7 +201,7 @@ func getAutomountServiceAccountToken(ctx trivyoperator.PluginContext) bool {
 func getConfig(ctx trivyoperator.PluginContext) (Config, error) {
 	pluginConfig, err := ctx.GetConfig()
 	if err != nil {
-		return Config{}, err
+		return Config{}, fmt.Errorf("get config: %w", err)
 	}
 	return Config{PluginConfig: pluginConfig}, nil
 }
@@ -231,6 +215,9 @@ func CreateSbomDataAsSecret(bom v1alpha1.BOM, secretName string) (corev1.Secret,
 	secret := corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: secretName,
+			Labels: map[string]string{
+				trivyoperator.LabelK8SAppManagedBy: trivyoperator.AppTrivyOperator,
+			},
 		},
 		Data: map[string][]byte{
 			"bom": bomByte,
@@ -240,7 +227,7 @@ func CreateSbomDataAsSecret(bom v1alpha1.BOM, secretName string) (corev1.Secret,
 }
 
 // CreateVolumeSbomFiles creates a volume and volume mount for the sbom data
-func CreateVolumeSbomFiles(volumeMounts *[]corev1.VolumeMount, volumes *[]corev1.Volume, secretName *string, fileName string, mountPath string, cname string) {
+func CreateVolumeSbomFiles(volumeMounts *[]corev1.VolumeMount, volumes *[]corev1.Volume, secretName *string, fileName, mountPath, cname string) {
 	vname := fmt.Sprintf("sbomvol-%s", cname)
 	sbomMount := corev1.VolumeMount{
 		Name:      vname,

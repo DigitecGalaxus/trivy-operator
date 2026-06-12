@@ -6,17 +6,17 @@ import (
 	"regexp"
 	"strings"
 
+	containerimage "github.com/google/go-containerregistry/pkg/name"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/aquasecurity/trivy-operator/pkg/apis/aquasecurity/v1alpha1"
 	"github.com/aquasecurity/trivy-operator/pkg/docker"
 	"github.com/aquasecurity/trivy-operator/pkg/kube"
 	"github.com/aquasecurity/trivy-operator/pkg/trivyoperator"
 	"github.com/aquasecurity/trivy-operator/pkg/vulnerabilityreport"
-	containerimage "github.com/google/go-containerregistry/pkg/name"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type ImageJobSpecMgr struct {
@@ -31,6 +31,15 @@ func (j *ImageJobSpecMgr) GetPodSpec(ctx trivyoperator.PluginContext, config Con
 	return j.getPodSpecFunc(ctx, config, workload, credentials, securityContext, p, clusterSboms)
 }
 
+// GetPodSpec creates a PodSpec for the Trivy image scan job.
+//
+// The number of main containers correspond to the number of containers
+// defined for the scanned workload. Each container runs the Trivy image scan
+// command and skips the database download.
+//
+//	trivy --cache-dir /tmp/trivy/.cache image --skip-update \
+//	  --format json <container image>
+//
 // In the Standalone mode there is the init container responsible for
 // downloading the latest Trivy DB file from GitHub and storing it to the
 // emptyDir volume shared with main containers. In other words, the init
@@ -38,13 +47,16 @@ func (j *ImageJobSpecMgr) GetPodSpec(ctx trivyoperator.PluginContext, config Con
 //
 //	trivy --cache-dir /tmp/trivy/.cache image --download-db-only
 //
-// The number of main containers correspond to the number of containers
-// defined for the scanned workload. Each container runs the Trivy image scan
-// command and skips the database download:
+// In the ClientServer each container runs Trivy image scan command and refers to Trivy server URL
+// returned by Config.GetServerURL:
 //
-//	trivy --cache-dir /tmp/trivy/.cache image --skip-update \
-//	  --format json <container image>
-func GetPodSpecForStandaloneMode(ctx trivyoperator.PluginContext,
+//		trivy image --server <server URL> \
+//		  --format json <container image>
+//
+//	 Also there is the init container responsible for downloading the latest Trivy Java DB for both modes
+//
+//		trivy --cache-dir /tmp/trivy/.cache image --download-java-db-only
+func GetPodSpecForImageScan(ctx trivyoperator.PluginContext,
 	config Config,
 	workload client.Object,
 	credentials map[string]docker.Auth,
@@ -79,24 +91,14 @@ func GetPodSpecForStandaloneMode(ctx trivyoperator.PluginContext,
 		secrets = append(secrets, secret)
 	}
 
-	trivyImageRef, err := config.GetImageRef()
-	if err != nil {
-		return corev1.PodSpec{}, nil, err
+	cacheDir := config.GetImageScanCacheDir()
+	args := []string{
+		"--cache-dir",
+		cacheDir,
+		"image",
 	}
 
 	trivyConfigName := trivyoperator.GetPluginConfigMapName(Plugin)
-
-	dbRepository, err := config.GetDBRepository()
-	if err != nil {
-		return corev1.PodSpec{}, nil, err
-	}
-
-	requirements, err := config.GetResourceRequirements()
-	if err != nil {
-		return corev1.PodSpec{}, nil, err
-	}
-
-	cacheDir := config.GetImageScanCacheDir()
 
 	volumeMounts := []corev1.VolumeMount{
 		{
@@ -115,46 +117,122 @@ func GetPodSpecForStandaloneMode(ctx trivyoperator.PluginContext,
 			},
 		},
 	}
-
 	if volume, volumeMount := config.GenerateSslCertDirVolumeIfAvailable(trivyConfigName); volume != nil && volumeMount != nil {
 		volumes = append(volumes, *volume)
 		volumeMounts = append(volumeMounts, *volumeMount)
 	}
-	initContainer := corev1.Container{
-		Name:                     p.idGenerator.GenerateID(),
-		Image:                    trivyImageRef,
-		ImagePullPolicy:          corev1.PullPolicy(config.GetImagePullPolicy()),
-		TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
-		Env:                      initContainerEnvVar(trivyConfigName, config),
-		Command: []string{
-			"trivy",
-		},
-		Args: []string{
-			"--cache-dir",
-			cacheDir,
-			"image",
-			"--download-db-only",
-			"--db-repository",
-			dbRepository,
-		},
-		Resources:       requirements,
-		SecurityContext: securityContext,
-		VolumeMounts:    volumeMounts,
-	}
 
-	var containers []corev1.Container
-
-	volumeMounts = append(volumeMounts, getScanResultVolumeMount())
-	volumes = append(volumes, getScanResultVolume())
-
-	if volume, volumeMount := config.GenerateIgnoreFileVolumeIfAvailable(trivyConfigName); volume != nil && volumeMount != nil {
+	if volume, volumeMount := config.GenerateConfigFileVolumeIfAvailable(trivyConfigName); volume != nil && volumeMount != nil {
 		volumes = append(volumes, *volume)
 		volumeMounts = append(volumeMounts, *volumeMount)
+		args = append(args, "--config", configFileMountPath)
 	}
-	if volume, volumeMount := config.GenerateIgnorePolicyVolumeIfAvailable(trivyConfigName, workload); volume != nil && volumeMount != nil {
-		volumes = append(volumes, *volume)
-		volumeMounts = append(volumeMounts, *volumeMount)
+
+	var initContainers []corev1.Container
+
+	trivyImageRef, err := config.GetImageRef()
+	if err != nil {
+		return corev1.PodSpec{}, nil, err
 	}
+	resourceRequirements, err := config.GetResourceRequirements()
+	if err != nil {
+		return corev1.PodSpec{}, nil, err
+	}
+
+	dockerConfigPath := ""
+
+	if config.TrivyDBRepositoryCredentialsSet() {
+		dockerConfigPath = "/docker-config/"
+
+		dockerConfigVolumeMount := []corev1.VolumeMount{
+			{
+				Name:      dockerConfigVolumeName,
+				ReadOnly:  false,
+				MountPath: dockerConfigPath,
+			},
+		}
+		dockerConfigVolume := []corev1.Volume{
+			{
+				Name: dockerConfigVolumeName,
+				VolumeSource: corev1.VolumeSource{
+					EmptyDir: &corev1.EmptyDirVolumeSource{
+						Medium: corev1.StorageMediumDefault,
+					},
+				},
+			},
+		}
+		volumes = append(volumes, dockerConfigVolume...)
+		volumeMounts = append(volumeMounts, dockerConfigVolumeMount...)
+
+		dbRepository, err := config.GetDBRepository()
+		if err != nil {
+			return corev1.PodSpec{}, nil, err
+		}
+
+		javaDbRegistry, err := containerimage.ParseReference(dbRepository)
+		if err != nil {
+			return corev1.PodSpec{}, nil, fmt.Errorf("failed to parse db registry image: %w", err)
+		}
+
+		initContainers = append(initContainers, corev1.Container{
+			Name:                     p.idGenerator.GenerateID(),
+			Image:                    trivyImageRef,
+			ImagePullPolicy:          corev1.PullPolicy(config.GetImagePullPolicy()),
+			TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
+			Env:                      initContainerEnvVar(trivyConfigName, config, dockerConfigPath),
+			Command: []string{
+				"trivy",
+			},
+			Args:            []string{"registry", "login", javaDbRegistry.Context().Registry.Name()}, // TRIVY_USERNAME and TRIVY_PASSWORD are set up in initContainerEnvVar()
+			Resources:       resourceRequirements,
+			SecurityContext: securityContext,
+			VolumeMounts:    volumeMounts,
+		})
+	}
+
+	mode := config.GetMode()
+
+	if mode == Standalone {
+		// prepare Trivy DB
+		dbRepository, err := config.GetDBRepository()
+		if err != nil {
+			return corev1.PodSpec{}, nil, err
+		}
+
+		initContainers = append(initContainers, corev1.Container{
+			Name:                     p.idGenerator.GenerateID(),
+			Image:                    trivyImageRef,
+			ImagePullPolicy:          corev1.PullPolicy(config.GetImagePullPolicy()),
+			TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
+			Env:                      initContainerEnvVar(trivyConfigName, config, dockerConfigPath),
+			Command: []string{
+				"trivy",
+			},
+			Args:            append(args, "--download-db-only", "--db-repository", dbRepository),
+			Resources:       resourceRequirements,
+			SecurityContext: securityContext,
+			VolumeMounts:    volumeMounts,
+		})
+	}
+
+	additionalVolumes, additionalVolumeMounts := getAdditionalVolumes(&config, trivyConfigName, workload)
+	volumes = append(volumes, additionalVolumes...)
+	volumeMounts = append(volumeMounts, additionalVolumeMounts...)
+
+	trivyServerURL := ""
+	if mode == ClientServer {
+		sourceTrivyServerURL, err := config.GetServerURL()
+		if err != nil {
+			return corev1.PodSpec{}, nil, err
+		}
+		parsedTrivyServerURL, err := url.Parse(sourceTrivyServerURL)
+		if err != nil {
+			return corev1.PodSpec{}, nil, err
+		}
+		trivyServerURL = parsedTrivyServerURL.String()
+	}
+
+	containers := make([]corev1.Container, 0)
 
 	for _, c := range containersSpec {
 		if ExcludeImage(ctx.GetTrivyOperatorConfig().ExcludeImages(), c.Image) {
@@ -172,8 +250,26 @@ func GetPodSpecForStandaloneMode(ctx trivyoperator.PluginContext,
 			constructEnvVarSourceFromConfigMap("HTTPS_PROXY", trivyConfigName, keyTrivyHTTPSProxy),
 			constructEnvVarSourceFromConfigMap("NO_PROXY", trivyConfigName, keyTrivyNoProxy),
 		}
-
-		if len(config.GetSslCertDir()) > 0 {
+		if dockerConfigPath != "" {
+			env = append(env, corev1.EnvVar{
+				Name:  "DOCKER_CONFIG",
+				Value: dockerConfigPath,
+			})
+		}
+		if mode == ClientServer {
+			env = append(env,
+				constructEnvVarSourceFromConfigMap("TRIVY_TOKEN_HEADER", trivyConfigName, keyTrivyServerTokenHeader),
+				constructEnvVarSourceFromSecret("TRIVY_TOKEN", trivyConfigName, keyTrivyServerToken),
+				constructEnvVarSourceFromSecret("TRIVY_CUSTOM_HEADERS", trivyConfigName, keyTrivyServerCustomHeaders),
+			)
+			if config.GetServerInsecure() {
+				env = append(env, corev1.EnvVar{
+					Name:  "TRIVY_INSECURE",
+					Value: "true",
+				})
+			}
+		}
+		if config.GetSslCertDir() != "" {
 			env = append(env, corev1.EnvVar{
 				Name:  "SSL_CERT_DIR",
 				Value: SslCertDir,
@@ -182,13 +278,19 @@ func GetPodSpecForStandaloneMode(ctx trivyoperator.PluginContext,
 		if config.IgnoreFileExists() {
 			env = append(env, corev1.EnvVar{
 				Name:  "TRIVY_IGNOREFILE",
-				Value: ignoreFileMountPath,
+				Value: config.IgnoreFileMountPath(),
 			})
 		}
 		if config.FindIgnorePolicyKey(workload) != "" {
 			env = append(env, corev1.EnvVar{
 				Name:  "TRIVY_IGNORE_POLICY",
 				Value: ignorePolicyMountPath,
+			})
+		}
+		if config.GetDBRepositoryInsecure() {
+			env = append(env, corev1.EnvVar{
+				Name:  "TRIVY_INSECURE",
+				Value: "true",
 			})
 		}
 
@@ -199,19 +301,13 @@ func GetPodSpecForStandaloneMode(ctx trivyoperator.PluginContext,
 				Value: region,
 			})
 		}
-		if config.GetDBRepositoryInsecure() {
-			env = append(env, corev1.EnvVar{
-				Name:  "TRIVY_INSECURE",
-				Value: "true",
-			})
-		}
+
 		if _, ok := containersCredentials[c.Name]; ok && secret != nil {
 			registryUsernameKey := fmt.Sprintf("%s.username", c.Name)
 			registryPasswordKey := fmt.Sprintf("%s.password", c.Name)
-			secretName := secret.Name
 			if CheckGcpCrOrPrivateRegistry(c.Image) &&
 				ctx.GetTrivyOperatorConfig().GetScanJobUseGCRServiceAccount() {
-				createEnvandVolumeForGcr(&env, &volumeMounts, &volumes, &registryPasswordKey, &secretName)
+				createEnvandVolumeForGcr(&env, &volumeMounts, &volumes, &registryPasswordKey, &secret.Name)
 			} else {
 				env = append(env, corev1.EnvVar{
 					Name: "TRIVY_USERNAME",
@@ -235,7 +331,6 @@ func GetPodSpecForStandaloneMode(ctx trivyoperator.PluginContext,
 					},
 				})
 			}
-
 		}
 
 		env, err = appendTrivyInsecureEnv(config, c.Image, env)
@@ -248,17 +343,12 @@ func GetPodSpecForStandaloneMode(ctx trivyoperator.PluginContext,
 			return corev1.PodSpec{}, nil, err
 		}
 
-		resourceRequirements, err := config.GetResourceRequirements()
-		if err != nil {
-			return corev1.PodSpec{}, nil, err
-		}
-
 		imageRef, err := containerimage.ParseReference(c.Image)
 		if err != nil {
 			return corev1.PodSpec{}, nil, err
 		}
 		resultFileName := getUniqueScanResultFileName(c.Name)
-		cmd, args := getCommandAndArgs(ctx, Standalone, imageRef.String(), "", resultFileName)
+		cmd, args := getCommandAndArgs(ctx, mode, imageRef.String(), trivyServerURL, resultFileName)
 		if len(clusterSboms) > 0 { // trivy sbom ...
 			if sbomreportData, ok := clusterSboms[c.Name]; ok {
 				secretName := fmt.Sprintf("sbom-%s", c.Name)
@@ -270,7 +360,7 @@ func GetPodSpecForStandaloneMode(ctx trivyoperator.PluginContext,
 				fileName := fmt.Sprintf("%s.json", secretName)
 				mountPath := fmt.Sprintf("/sbom-%s", c.Name)
 				CreateVolumeSbomFiles(&volumeMounts, &volumes, &secretName, fileName, mountPath, c.Name)
-				cmd, args = GetSbomScanCommandAndArgs(ctx, Standalone, fmt.Sprintf("%s/%s", mountPath, fileName), "", resultFileName)
+				cmd, args = GetSbomScanCommandAndArgs(ctx, mode, fmt.Sprintf("%s/%s", mountPath, fileName), trivyServerURL, resultFileName)
 			}
 		}
 		containers = append(containers, corev1.Container{
@@ -286,90 +376,21 @@ func GetPodSpecForStandaloneMode(ctx trivyoperator.PluginContext,
 			VolumeMounts:             volumeMounts,
 		})
 	}
-
 	return corev1.PodSpec{
 		Affinity:                     trivyoperator.LinuxNodeAffinity(),
 		RestartPolicy:                corev1.RestartPolicyNever,
 		ServiceAccountName:           ctx.GetServiceAccountName(),
 		AutomountServiceAccountToken: ptr.To[bool](getAutomountServiceAccountToken(ctx)),
-		Volumes:                      volumes,
-		InitContainers:               []corev1.Container{initContainer},
 		Containers:                   containers,
+		Volumes:                      volumes,
+		InitContainers:               initContainers,
 		SecurityContext:              &corev1.PodSecurityContext{},
 	}, secrets, nil
 }
 
-// In the ClientServer mode the number of containers of the pod created by the
-// scan job equals the number of containers defined for the scanned workload.
-// Each container runs Trivy image scan command and refers to Trivy server URL
-// returned by Config.GetServerURL:
-//
-//	trivy image --server <server URL> \
-//	  --format json <container image>
-func GetPodSpecForClientServerMode(ctx trivyoperator.PluginContext, config Config, workload client.Object, credentials map[string]docker.Auth, securityContext *corev1.SecurityContext, p *plugin, clusterSboms map[string]v1alpha1.SbomReportData) (corev1.PodSpec, []*corev1.Secret, error) {
-	var secret *corev1.Secret
-	var secrets []*corev1.Secret
-	var containersSpec []corev1.Container
-	spec, err := kube.GetPodSpec(workload)
-	if err != nil {
-		return corev1.PodSpec{}, nil, err
-	}
-
-	trivyImageRef, err := config.GetImageRef()
-	if err != nil {
-		return corev1.PodSpec{}, nil, err
-	}
-
-	trivyServerURL, err := config.GetServerURL()
-	if err != nil {
-		return corev1.PodSpec{}, nil, err
-	}
-
-	for _, c := range getContainers(spec) {
-		optionalMirroredImage, err := GetMirroredImage(c.Image, config.GetMirrors())
-		if err != nil {
-			return corev1.PodSpec{}, nil, err
-		}
-		c.Image = optionalMirroredImage
-		containersSpec = append(containersSpec, c)
-	}
-
-	containerImages := kube.GetContainerImagesFromContainersList(containersSpec)
-	containersCredentials, err := kube.MapContainerNamesToDockerAuths(containerImages, credentials)
-	if err != nil {
-		return corev1.PodSpec{}, nil, err
-	}
-	if len(containersCredentials) > 0 {
-		secret = p.newSecretWithAggregateImagePullCredentials(workload, containerImages, containersCredentials)
-		secrets = append(secrets, secret)
-	}
-
-	var containers []corev1.Container
-
-	trivyConfigName := trivyoperator.GetPluginConfigMapName(Plugin)
-	// add tmp volume mount
-	volumeMounts := []corev1.VolumeMount{
-		{
-			Name:      tmpVolumeName,
-			ReadOnly:  false,
-			MountPath: "/tmp",
-		},
-	}
-
-	// add tmp volume
-	volumes := []corev1.Volume{
-		{
-			Name: tmpVolumeName,
-			VolumeSource: corev1.VolumeSource{
-				EmptyDir: &corev1.EmptyDirVolumeSource{
-					Medium: corev1.StorageMediumDefault,
-				},
-			},
-		},
-	}
-
-	volumeMounts = append(volumeMounts, getScanResultVolumeMount())
-	volumes = append(volumes, getScanResultVolume())
+func getAdditionalVolumes(config *Config, trivyConfigName string, workload client.Object) ([]corev1.Volume, []corev1.VolumeMount) {
+	volumeMounts := []corev1.VolumeMount{getScanResultVolumeMount()}
+	volumes := []corev1.Volume{getScanResultVolume()}
 
 	if volume, volumeMount := config.GenerateIgnoreFileVolumeIfAvailable(trivyConfigName); volume != nil && volumeMount != nil {
 		volumes = append(volumes, *volume)
@@ -379,162 +400,10 @@ func GetPodSpecForClientServerMode(ctx trivyoperator.PluginContext, config Confi
 		volumes = append(volumes, *volume)
 		volumeMounts = append(volumeMounts, *volumeMount)
 	}
-
-	if volume, volumeMount := config.GenerateSslCertDirVolumeIfAvailable(trivyConfigName); volume != nil && volumeMount != nil {
-		volumes = append(volumes, *volume)
-		volumeMounts = append(volumeMounts, *volumeMount)
-	}
-
-	for _, container := range containersSpec {
-		env := []corev1.EnvVar{
-			constructEnvVarSourceFromConfigMap("HTTP_PROXY", trivyConfigName, keyTrivyHTTPProxy),
-			constructEnvVarSourceFromConfigMap("HTTPS_PROXY", trivyConfigName, keyTrivyHTTPSProxy),
-			constructEnvVarSourceFromConfigMap("NO_PROXY", trivyConfigName, keyTrivyNoProxy),
-			constructEnvVarSourceFromConfigMap("TRIVY_SEVERITY", trivyConfigName, KeyTrivySeverity),
-			constructEnvVarSourceFromConfigMap("TRIVY_IGNORE_UNFIXED", trivyConfigName, keyTrivyIgnoreUnfixed),
-			constructEnvVarSourceFromConfigMap("TRIVY_OFFLINE_SCAN", trivyConfigName, keyTrivyOfflineScan),
-			constructEnvVarSourceFromConfigMap("TRIVY_JAVA_DB_REPOSITORY", trivyConfigName, keyTrivyJavaDBRepository),
-			constructEnvVarSourceFromConfigMap("TRIVY_TIMEOUT", trivyConfigName, keyTrivyTimeout),
-			ConfigWorkloadAnnotationEnvVars(workload, SkipFilesAnnotation, "TRIVY_SKIP_FILES", trivyConfigName, keyTrivySkipFiles),
-			ConfigWorkloadAnnotationEnvVars(workload, SkipDirsAnnotation, "TRIVY_SKIP_DIRS", trivyConfigName, keyTrivySkipDirs),
-			constructEnvVarSourceFromConfigMap("TRIVY_TOKEN_HEADER", trivyConfigName, keyTrivyServerTokenHeader),
-			constructEnvVarSourceFromSecret("TRIVY_TOKEN", trivyConfigName, keyTrivyServerToken),
-			constructEnvVarSourceFromSecret("TRIVY_CUSTOM_HEADERS", trivyConfigName, keyTrivyServerCustomHeaders),
-		}
-		if len(config.GetSslCertDir()) > 0 {
-			env = append(env, corev1.EnvVar{
-				Name:  "SSL_CERT_DIR",
-				Value: SslCertDir,
-			})
-		}
-		if config.IgnoreFileExists() {
-			env = append(env, corev1.EnvVar{
-				Name:  "TRIVY_IGNOREFILE",
-				Value: ignoreFileMountPath,
-			})
-		}
-		if config.FindIgnorePolicyKey(workload) != "" {
-			env = append(env, corev1.EnvVar{
-				Name:  "TRIVY_IGNORE_POLICY",
-				Value: ignorePolicyMountPath,
-			})
-		}
-
-		region := CheckAwsEcrPrivateRegistry(container.Image)
-		if region != "" {
-			env = append(env, corev1.EnvVar{
-				Name:  "AWS_REGION",
-				Value: region,
-			})
-		}
-
-		if auth, ok := containersCredentials[container.Name]; ok && secret != nil {
-			if CheckGcpCrOrPrivateRegistry(container.Image) && auth.Username == "_json_key" {
-				registryServiceAccountAuthKey := fmt.Sprintf("%s.password", container.Name)
-				createEnvandVolumeForGcr(&env, &volumeMounts, &volumes, &registryServiceAccountAuthKey, &secret.Name)
-			} else {
-				registryUsernameKey := fmt.Sprintf("%s.username", container.Name)
-				registryPasswordKey := fmt.Sprintf("%s.password", container.Name)
-				env = append(env, corev1.EnvVar{
-					Name: "TRIVY_USERNAME",
-					ValueFrom: &corev1.EnvVarSource{
-						SecretKeyRef: &corev1.SecretKeySelector{
-							LocalObjectReference: corev1.LocalObjectReference{
-								Name: secret.Name,
-							},
-							Key: registryUsernameKey,
-						},
-					},
-				}, corev1.EnvVar{
-					Name: "TRIVY_PASSWORD",
-					ValueFrom: &corev1.EnvVarSource{
-						SecretKeyRef: &corev1.SecretKeySelector{
-							LocalObjectReference: corev1.LocalObjectReference{
-								Name: secret.Name,
-							},
-							Key: registryPasswordKey,
-						},
-					},
-				})
-			}
-		}
-
-		env, err = appendTrivyInsecureEnv(config, container.Image, env)
-		if err != nil {
-			return corev1.PodSpec{}, nil, err
-		}
-
-		env, err = appendTrivyNonSSLEnv(config, container.Image, env)
-		if err != nil {
-			return corev1.PodSpec{}, nil, err
-		}
-
-		if config.GetServerInsecure() {
-			env = append(env, corev1.EnvVar{
-				Name:  "TRIVY_INSECURE",
-				Value: "true",
-			})
-		}
-		if config.GetDBRepositoryInsecure() {
-			env = append(env, corev1.EnvVar{
-				Name:  "TRIVY_INSECURE",
-				Value: "true",
-			})
-		}
-		requirements, err := config.GetResourceRequirements()
-		if err != nil {
-			return corev1.PodSpec{}, nil, err
-		}
-
-		encodedTrivyServerURL, err := url.Parse(trivyServerURL)
-		if err != nil {
-			return corev1.PodSpec{}, nil, err
-		}
-		imageRef, err := containerimage.ParseReference(container.Image)
-		if err != nil {
-			return corev1.PodSpec{}, nil, err
-		}
-		resultFileName := getUniqueScanResultFileName(container.Name)
-		cmd, args := getCommandAndArgs(ctx, ClientServer, imageRef.String(), encodedTrivyServerURL.String(), resultFileName)
-		if len(clusterSboms) > 0 { // trivy sbom ...
-			if sbomreportData, ok := clusterSboms[container.Name]; ok {
-				secretName := fmt.Sprintf("sbom-%s", container.Name)
-				secret, err := CreateSbomDataAsSecret(sbomreportData.Bom, secretName)
-				if err != nil {
-					return corev1.PodSpec{}, nil, err
-				}
-				secrets = append(secrets, &secret)
-				fileName := fmt.Sprintf("%s.json", secretName)
-				mountPath := fmt.Sprintf("/sbom-%s", container.Name)
-				CreateVolumeSbomFiles(&volumeMounts, &volumes, &secretName, fileName, mountPath, container.Name)
-				cmd, args = GetSbomScanCommandAndArgs(ctx, ClientServer, fmt.Sprintf("%s/%s", mountPath, fileName), encodedTrivyServerURL.String(), resultFileName)
-			}
-		}
-		containers = append(containers, corev1.Container{
-			Name:                     container.Name,
-			Image:                    trivyImageRef,
-			ImagePullPolicy:          corev1.PullPolicy(config.GetImagePullPolicy()),
-			TerminationMessagePolicy: corev1.TerminationMessageFallbackToLogsOnError,
-			Env:                      env,
-			Command:                  cmd,
-			Args:                     args,
-			Resources:                requirements,
-			SecurityContext:          securityContext,
-			VolumeMounts:             volumeMounts,
-		})
-	}
-
-	return corev1.PodSpec{
-		Affinity:                     trivyoperator.LinuxNodeAffinity(),
-		RestartPolicy:                corev1.RestartPolicyNever,
-		ServiceAccountName:           ctx.GetServiceAccountName(),
-		AutomountServiceAccountToken: ptr.To[bool](getAutomountServiceAccountToken(ctx)),
-		Containers:                   containers,
-		Volumes:                      volumes,
-	}, secrets, nil
+	return volumes, volumeMounts
 }
 
-func initContainerEnvVar(trivyConfigName string, config Config) []corev1.EnvVar {
+func initContainerEnvVar(trivyConfigName string, config Config, dockerConfigPath string) []corev1.EnvVar {
 	envs := []corev1.EnvVar{
 		constructEnvVarSourceFromConfigMap("HTTP_PROXY", trivyConfigName, keyTrivyHTTPProxy),
 		constructEnvVarSourceFromConfigMap("HTTPS_PROXY", trivyConfigName, keyTrivyHTTPSProxy),
@@ -554,97 +423,106 @@ func initContainerEnvVar(trivyConfigName string, config Config) []corev1.EnvVar 
 			Value: "true",
 		})
 	}
+	if dockerConfigPath != "" {
+		envs = append(envs, corev1.EnvVar{
+			Name:  "DOCKER_CONFIG",
+			Value: dockerConfigPath,
+		})
+	}
 	return envs
 }
 
-func getCommandAndArgs(ctx trivyoperator.PluginContext, mode Mode, imageRef string, trivyServerURL string, resultFileName string) ([]string, []string) {
-	command := []string{
-		"trivy",
-	}
-	trivyConfig := ctx.GetTrivyOperatorConfig()
-	compressLogs := trivyConfig.CompressLogs()
-	c, err := getConfig(ctx)
+func getCommandAndArgs(ctx trivyoperator.PluginContext, mode Mode, imageRef, trivyServerURL, resultFileName string) ([]string, []string) {
+	trivyOperatorConfig := ctx.GetTrivyOperatorConfig()
+	trivyConfig, err := getConfig(ctx)
+
 	if err != nil {
 		return []string{}, []string{}
 	}
-	slow := Slow(c)
-	sbomSources := c.GetSbomSources()
-	skipJavaDBUpdate := SkipJavaDBUpdate(c)
-	cacheDir := c.GetImageScanCacheDir()
-	vulnTypeArgs := vulnTypeFilter(ctx)
-	scanners := Scanners(c)
 
-	var vulnTypeFlag string
-	if len(vulnTypeArgs) == 2 {
-		vulnTypeFlag = fmt.Sprintf("%s %s ", vulnTypeArgs[0], vulnTypeArgs[1])
+	// Arguments first.
+	args := []string{
+		"image",
+		imageRef,
 	}
-	imcs := imageConfigSecretScanner(trivyConfig)
-	var imageconfigSecretScannerFlag string
-	if len(imcs) == 2 {
-		imageconfigSecretScannerFlag = fmt.Sprintf("%s %s ", imcs[0], imcs[1])
+
+	// Options in alphabetic order.
+	cacheDir := trivyConfig.GetImageScanCacheDir()
+	args = append(args, "--cache-dir", cacheDir, "--format", "json")
+
+	imcs := imageConfigSecretScanner(trivyOperatorConfig)
+	if len(imcs) > 0 {
+		args = append(args, imcs...)
 	}
+
+	sbomSources := trivyConfig.GetSbomSources()
+	if sbomSources != "" {
+		args = append(args, []string{"--sbom-sources", sbomSources}...)
+	}
+
+	scanners := Scanners(trivyConfig)
+	args = append(args, scanners, getSecurityChecks(ctx))
+
+	if trivyServerURL != "" {
+		args = append(args, []string{"--server", trivyServerURL}...)
+	}
+
 	var skipUpdate string
-	if c.GetClientServerSkipUpdate() && mode == ClientServer {
-		skipUpdate = SkipDBUpdate(c)
+	if trivyConfig.GetClientServerSkipUpdate() && mode == ClientServer {
+		skipUpdate = SkipDBUpdate(trivyConfig)
 	} else if mode != ClientServer {
-		skipUpdate = SkipDBUpdate(c)
+		skipUpdate = SkipDBUpdate(trivyConfig)
 	}
-	if !compressLogs {
-		args := []string{
-			"--cache-dir",
-			cacheDir,
-			"--quiet",
-			"image",
-			scanners,
-			getSecurityChecks(ctx),
-			"--format",
-			"json",
-		}
-		if len(trivyServerURL) > 0 {
-			args = append(args, []string{"--server", trivyServerURL}...)
-		}
-		args = append(args, imageRef)
+	if skipUpdate != "" {
+		args = append(args, skipUpdate)
+	}
 
-		if len(slow) > 0 {
-			args = append(args, slow)
-		}
-		if len(vulnTypeArgs) > 0 {
-			args = append(args, vulnTypeArgs...)
-		}
-		if len(imcs) > 0 {
-			args = append(args, imcs...)
-		}
-		pkgList := getPkgList(ctx)
-		if len(pkgList) > 0 {
-			args = append(args, pkgList)
-		}
-		if len(sbomSources) > 0 {
-			args = append(args, []string{"--sbom-sources", sbomSources}...)
-		}
-		if len(skipUpdate) > 0 {
-			args = append(args, skipUpdate)
-		}
-		if len(skipJavaDBUpdate) > 0 {
-			args = append(args, skipJavaDBUpdate)
-		}
+	skipJavaDBUpdate := SkipJavaDBUpdate(trivyConfig)
+	if skipJavaDBUpdate != "" {
+		args = append(args, skipJavaDBUpdate)
+	}
 
-		return command, args
+	slow := Slow(trivyConfig)
+	if slow != "" {
+		args = append(args, slow)
 	}
-	var serverUrlParms string
-	if mode == ClientServer {
-		serverUrlParms = fmt.Sprintf("--server '%s' ", trivyServerURL)
+
+	vulnTypeArgs := vulnTypeFilter(ctx)
+	if len(vulnTypeArgs) > 0 {
+		args = append(args, vulnTypeArgs...)
 	}
-	var sbomSourcesFlag string
-	if len(sbomSources) > 0 {
-		sbomSourcesFlag = fmt.Sprintf(" --sbom-sources %s ", sbomSources)
+
+	pkgList := getPkgList(ctx)
+	if pkgList != "" {
+		args = append(args, pkgList)
 	}
-	return []string{"/bin/sh"}, []string{"-c", fmt.Sprintf(`trivy image %s '%s' %s %s %s %s %s %s%s --cache-dir %s --quiet %s --format json %s> /tmp/scan/%s &&  bzip2 -c /tmp/scan/%s | base64`, slow, imageRef, scanners, getSecurityChecks(ctx), imageconfigSecretScannerFlag, vulnTypeFlag, skipUpdate, skipJavaDBUpdate, sbomSourcesFlag, cacheDir, getPkgList(ctx), serverUrlParms, resultFileName, resultFileName)}
+
+	if trivyConfig.ConfigFileExists() {
+		args = append(args, "--config", configFileMountPath)
+	}
+
+	// Add command to args as it is now need to pipe output to compress.
+	args = append([]string{"trivy"}, args...)
+	args = append(args,
+		"--output",
+		fmt.Sprintf("/tmp/scan/%s 2>/tmp/scan/%s.log", resultFileName, resultFileName),
+		buildTrailingCommandArgs(resultFileName, trivyOperatorConfig.CompressLogs()),
+	)
+
+	return []string{"/bin/sh"}, append([]string{"-c"}, strings.Join(args, " "))
 }
 
-func GetSbomScanCommandAndArgs(ctx trivyoperator.PluginContext, mode Mode, sbomFile string, trivyServerURL string, resultFileName string) ([]string, []string) {
-	command := []string{
-		"trivy",
+func buildTrailingCommandArgs(resultFileName string, compressLogs bool) string {
+	var cmd string
+	if compressLogs {
+		cmd = fmt.Sprintf("bzip2 -c /tmp/scan/%s | base64", resultFileName)
+	} else {
+		cmd = fmt.Sprintf("cat /tmp/scan/%s", resultFileName)
 	}
+	return fmt.Sprintf("; rc=$?; if [ $rc -eq 1 ]; then cat /tmp/scan/%s.log; else %s; fi; exit $rc", resultFileName, cmd)
+}
+
+func GetSbomScanCommandAndArgs(ctx trivyoperator.PluginContext, mode Mode, sbomFile, trivyServerURL, resultFileName string) ([]string, []string) {
 	trivyConfig := ctx.GetTrivyOperatorConfig()
 	compressLogs := trivyConfig.CompressLogs()
 	c, err := getConfig(ctx)
@@ -652,11 +530,6 @@ func GetSbomScanCommandAndArgs(ctx trivyoperator.PluginContext, mode Mode, sbomF
 		return []string{}, []string{}
 	}
 	slow := Slow(c)
-	vulnTypeArgs := vulnTypeFilter(ctx)
-	var vulnTypeFlag string
-	if len(vulnTypeArgs) == 2 {
-		vulnTypeFlag = fmt.Sprintf("%s %s ", vulnTypeArgs[0], vulnTypeArgs[1])
-	}
 
 	var skipUpdate string
 	if c.GetClientServerSkipUpdate() && mode == ClientServer {
@@ -664,36 +537,39 @@ func GetSbomScanCommandAndArgs(ctx trivyoperator.PluginContext, mode Mode, sbomF
 	} else if mode != ClientServer {
 		skipUpdate = SkipDBUpdate(c)
 	}
-	if !compressLogs {
-		args := []string{
-			"--cache-dir",
-			"/tmp/trivy/.cache",
-			"--quiet",
-			"sbom",
-			"--format",
-			"json",
-		}
+	args := []string{
+		"trivy",
+		"--cache-dir",
+		"/tmp/trivy/.cache",
+		"sbom",
+		"--format",
+		"json",
+	}
+	if mode == ClientServer && trivyServerURL != "" {
+		args = append(args, "--server", trivyServerURL)
+	}
 
-		if len(trivyServerURL) > 0 {
-			args = append(args, []string{"--server", trivyServerURL}...)
-		}
-		args = append(args, sbomFile)
-		if len(slow) > 0 {
-			args = append(args, slow)
-		}
-		if len(vulnTypeArgs) > 0 {
-			args = append(args, vulnTypeArgs...)
-		}
-		if len(skipUpdate) > 0 {
-			args = append(args, skipUpdate)
-		}
-		return command, args
+	args = append(args, sbomFile)
+
+	if slow != "" {
+		args = append(args, slow)
 	}
-	var serverUrlParms string
-	if mode == ClientServer {
-		serverUrlParms = fmt.Sprintf("--server '%s' ", trivyServerURL)
+
+	vulnTypeArgs := vulnTypeFilter(ctx)
+	if len(vulnTypeArgs) > 0 {
+		args = append(args, vulnTypeArgs...)
 	}
-	return []string{"/bin/sh"}, []string{"-c", fmt.Sprintf(`trivy sbom %s %s %s %s  --cache-dir /tmp/trivy/.cache --quiet --format json %s> /tmp/scan/%s &&  bzip2 -c /tmp/scan/%s | base64`, slow, sbomFile, vulnTypeFlag, skipUpdate, serverUrlParms, resultFileName, resultFileName)}
+
+	if skipUpdate != "" {
+		args = append(args, skipUpdate)
+	}
+	outputFile := fmt.Sprintf("/tmp/scan/%s", resultFileName)
+
+	args = append(args,
+		"--output", outputFile, fmt.Sprintf("2>/tmp/scan/%s.log", resultFileName),
+		buildTrailingCommandArgs(resultFileName, compressLogs),
+	)
+	return []string{"/bin/sh"}, append([]string{"-c"}, strings.Join(args, " "))
 }
 
 func vulnTypeFilter(ctx trivyoperator.PluginContext) []string {
@@ -702,7 +578,7 @@ func vulnTypeFilter(ctx trivyoperator.PluginContext) []string {
 		return []string{}
 	}
 	vulnType := config.GetVulnType()
-	if len(vulnType) == 0 {
+	if vulnType == "" {
 		return []string{}
 	}
 	return []string{"--vuln-type", vulnType}
@@ -724,22 +600,30 @@ func appendTrivyNonSSLEnv(config Config, image string, env []corev1.EnvVar) ([]c
 	return env, nil
 }
 
-func createEnvandVolumeForGcr(env *[]corev1.EnvVar, volumeMounts *[]corev1.VolumeMount, volumes *[]corev1.Volume, registryPasswordKey *string, secretName *string) {
-	*env = append(*env, corev1.EnvVar{
-		Name:  "TRIVY_USERNAME",
-		Value: "",
-	})
-	*env = append(*env, corev1.EnvVar{
-		Name:  "GOOGLE_APPLICATION_CREDENTIALS",
-		Value: "/cred/credential.json",
-	})
+func createEnvandVolumeForGcr(env *[]corev1.EnvVar, volumeMounts *[]corev1.VolumeMount, volumes *[]corev1.Volume, registryPasswordKey, secretName *string) {
+	const googlecredVolumeName = "gcrvol"
+	for _, v := range *volumes {
+		if v.Name == googlecredVolumeName {
+			return
+		}
+	}
+
+	*env = append(*env,
+		corev1.EnvVar{
+			Name:  "TRIVY_USERNAME",
+			Value: "",
+		},
+		corev1.EnvVar{
+			Name:  "GOOGLE_APPLICATION_CREDENTIALS",
+			Value: "/cred/credential.json",
+		})
 	googlecredMount := corev1.VolumeMount{
-		Name:      "gcrvol",
+		Name:      googlecredVolumeName,
 		MountPath: "/cred",
 		ReadOnly:  true,
 	}
 	googlecredVolume := corev1.Volume{
-		Name: "gcrvol",
+		Name: googlecredVolumeName,
 		VolumeSource: corev1.VolumeSource{
 			Secret: &corev1.SecretVolumeSource{
 				SecretName: *secretName,
@@ -794,6 +678,9 @@ func (p *plugin) newSecretWithAggregateImagePullCredentials(obj client.Object, c
 	return &corev1.Secret{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: vulnerabilityreport.RegistryCredentialsSecretName(obj),
+			Labels: map[string]string{
+				trivyoperator.LabelK8SAppManagedBy: trivyoperator.AppTrivyOperator,
+			},
 		},
 		Data: secretData,
 	}

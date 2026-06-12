@@ -16,11 +16,11 @@ metadata:
   creationTimestamp: "2023-07-10T09:37:21Z"
   generation: 1
   labels:
-    resource-spec-hash: 796669cd5d
-    trivy-operator.container.name: kube-apiserver
-    trivy-operator.resource.kind: Pod
-    trivy-operator.resource.name: kube-apiserver-kind-control-plane
-    trivy-operator.resource.namespace: kube-system
+    annotation.resource-spec-hash: 796669cd5d
+    annotation.trivy-operator.container.name: kube-apiserver
+    annotation.trivy-operator.resource.kind: Pod
+    annotation.trivy-operator.resource.name: kube-apiserver-kind-control-plane
+    annotation.trivy-operator.resource.namespace: kube-system
   name: pod-kube-apiserver-kind-control-plane-kube-apiserver
   namespace: kube-system
   ownerReferences:
@@ -162,7 +162,7 @@ report:
   scanner:
     name: Trivy
     vendor: Aqua Security
-    version: 0.52.2
+    version: 0.69.3
   summary:
     componentsCount: 5
     dependenciesCount: 5

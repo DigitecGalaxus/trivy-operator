@@ -3,7 +3,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.14.0
+    controller-gen.kubebuilder.io/version: v0.18.0
   name: clustercompliancereports.aquasecurity.github.io
 spec:
   group: aquasecurity.github.io
@@ -283,7 +283,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.14.0
+    controller-gen.kubebuilder.io/version: v0.18.0
   name: clusterconfigauditreports.aquasecurity.github.io
 spec:
   group: aquasecurity.github.io
@@ -461,7 +461,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.14.0
+    controller-gen.kubebuilder.io/version: v0.18.0
   name: clusterinfraassessmentreports.aquasecurity.github.io
 spec:
   group: aquasecurity.github.io
@@ -638,7 +638,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.14.0
+    controller-gen.kubebuilder.io/version: v0.18.0
   name: clusterrbacassessmentreports.aquasecurity.github.io
 spec:
   group: aquasecurity.github.io
@@ -815,7 +815,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.14.0
+    controller-gen.kubebuilder.io/version: v0.18.0
   name: clustersbomreports.aquasecurity.github.io
 spec:
   group: aquasecurity.github.io
@@ -1210,7 +1210,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.14.0
+    controller-gen.kubebuilder.io/version: v0.18.0
   name: clustervulnerabilityreports.aquasecurity.github.io
 spec:
   group: aquasecurity.github.io
@@ -1415,6 +1415,10 @@ spec:
                             type: number
                           V3Vector:
                             type: string
+                          V40Score:
+                            type: number
+                          V40Vector:
+                            type: string
                         type: object
                       type: object
                     cvsssource:
@@ -1437,6 +1441,8 @@ spec:
                       items:
                         type: string
                       type: array
+                    packagePURL:
+                      type: string
                     packagePath:
                       type: string
                     packageType:
@@ -1500,7 +1506,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.14.0
+    controller-gen.kubebuilder.io/version: v0.18.0
   name: configauditreports.aquasecurity.github.io
 spec:
   group: aquasecurity.github.io
@@ -1679,7 +1685,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.14.0
+    controller-gen.kubebuilder.io/version: v0.18.0
   name: exposedsecretreports.aquasecurity.github.io
 spec:
   group: aquasecurity.github.io
@@ -1891,7 +1897,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.14.0
+    controller-gen.kubebuilder.io/version: v0.18.0
   name: infraassessmentreports.aquasecurity.github.io
 spec:
   group: aquasecurity.github.io
@@ -2068,7 +2074,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.14.0
+    controller-gen.kubebuilder.io/version: v0.18.0
   name: rbacassessmentreports.aquasecurity.github.io
 spec:
   group: aquasecurity.github.io
@@ -2246,7 +2252,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.14.0
+    controller-gen.kubebuilder.io/version: v0.18.0
   name: sbomreports.aquasecurity.github.io
 spec:
   group: aquasecurity.github.io
@@ -2643,7 +2649,7 @@ apiVersion: apiextensions.k8s.io/v1
 kind: CustomResourceDefinition
 metadata:
   annotations:
-    controller-gen.kubebuilder.io/version: v0.14.0
+    controller-gen.kubebuilder.io/version: v0.18.0
   name: vulnerabilityreports.aquasecurity.github.io
 spec:
   group: aquasecurity.github.io
@@ -2849,6 +2855,10 @@ spec:
                             type: number
                           V3Vector:
                             type: string
+                          V40Score:
+                            type: number
+                          V40Vector:
+                            type: string
                         type: object
                       type: object
                     cvsssource:
@@ -2871,6 +2881,8 @@ spec:
                       items:
                         type: string
                       type: array
+                    packagePURL:
+                      type: string
                     packagePath:
                       type: string
                     packageType:
@@ -2937,7 +2949,7 @@ metadata:
   labels:
     app.kubernetes.io/name: trivy-operator
     app.kubernetes.io/instance: trivy-operator
-    app.kubernetes.io/version: "0.22.0"
+    app.kubernetes.io/version: "0.30.1"
     app.kubernetes.io/managed-by: kubectl
 ---
 # Source: trivy-operator/templates/configmaps/operator.yaml
@@ -2949,7 +2961,7 @@ metadata:
   labels:
     app.kubernetes.io/name: trivy-operator
     app.kubernetes.io/instance: trivy-operator
-    app.kubernetes.io/version: "0.22.0"
+    app.kubernetes.io/version: "0.30.1"
     app.kubernetes.io/managed-by: kubectl
 data:
   nodeCollector.volumes: "[{\"hostPath\":{\"path\":\"/var/lib/etcd\"},\"name\":\"var-lib-etcd\"},{\"hostPath\":{\"path\":\"/var/lib/kubelet\"},\"name\":\"var-lib-kubelet\"},{\"hostPath\":{\"path\":\"/var/lib/kube-scheduler\"},\"name\":\"var-lib-kube-scheduler\"},{\"hostPath\":{\"path\":\"/var/lib/kube-controller-manager\"},\"name\":\"var-lib-kube-controller-manager\"},{\"hostPath\":{\"path\":\"/etc/systemd\"},\"name\":\"etc-systemd\"},{\"hostPath\":{\"path\":\"/lib/systemd\"},\"name\":\"lib-systemd\"},{\"hostPath\":{\"path\":\"/etc/kubernetes\"},\"name\":\"etc-kubernetes\"},{\"hostPath\":{\"path\":\"/etc/cni/net.d/\"},\"name\":\"etc-cni-netd\"}]"
@@ -2958,11 +2970,12 @@ data:
   scanJob.podTemplateContainerSecurityContext: "{\"allowPrivilegeEscalation\":false,\"capabilities\":{\"drop\":[\"ALL\"]},\"privileged\":false,\"readOnlyRootFilesystem\":true}"
   scanJob.compressLogs: "true"
   vulnerabilityReports.scanner: "Trivy"
+  vulnerabilityReports.scanJobsInSameNamespace: "false"
   configAuditReports.scanner: "Trivy"
   compliance.failEntriesLimit: "10"
   report.recordFailedChecksOnly: "true"
   node.collector.imageRef: "ghcr.io/aquasecurity/node-collector:0.3.1"
-  policies.bundle.oci.ref: "ghcr.io/aquasecurity/trivy-checks:0"
+  policies.bundle.oci.ref: "mirror.gcr.io/aquasec/trivy-checks:1"
   policies.bundle.insecure: "false"
 
   node.collector.nodeSelector: "true"
@@ -2976,7 +2989,7 @@ metadata:
   labels:
     app.kubernetes.io/name: trivy-operator
     app.kubernetes.io/instance: trivy-operator
-    app.kubernetes.io/version: "0.22.0"
+    app.kubernetes.io/version: "0.30.1"
     app.kubernetes.io/managed-by: kubectl
 data:
   OPERATOR_LOG_DEV_MODE: "false"
@@ -2991,6 +3004,7 @@ data:
   OPERATOR_METRICS_FINDINGS_ENABLED: "true"
   OPERATOR_METRICS_VULN_ID_ENABLED: "false"
   OPERATOR_HEALTH_PROBE_BIND_ADDRESS: ":9090"
+  OPERATOR_PPROF_BIND_ADDRESS: ""
   OPERATOR_VULNERABILITY_SCANNER_ENABLED: "true"
   OPERATOR_SBOM_GENERATION_ENABLED: "true"
   OPERATOR_CLUSTER_SBOM_CACHE_ENABLED: "false"
@@ -3029,11 +3043,11 @@ metadata:
   labels:
     app.kubernetes.io/name: trivy-operator
     app.kubernetes.io/instance: trivy-operator
-    app.kubernetes.io/version: "0.22.0"
+    app.kubernetes.io/version: "0.30.1"
     app.kubernetes.io/managed-by: kubectl
 data:
-  trivy.repository: "ghcr.io/aquasecurity/trivy"
-  trivy.tag: "0.53.0"
+  trivy.repository: "mirror.gcr.io/aquasec/trivy"
+  trivy.tag: "0.69.3"
   trivy.imagePullPolicy: "IfNotPresent"
   trivy.additionalVulnerabilityReportFields: ""
   trivy.severity: "UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL"
@@ -3042,13 +3056,13 @@ data:
   trivy.includeDevDeps: "false"
   trivy.imageScanCacheDir: "/tmp/trivy/.cache"
   trivy.filesystemScanCacheDir: "/var/trivyoperator/trivy-db"
-  trivy.dbRepository: "ghcr.io/aquasecurity/trivy-db"
-  trivy.javaDbRepository: "ghcr.io/aquasecurity/trivy-java-db"
+  trivy.dbRepository: "mirror.gcr.io/aquasec/trivy-db"
+  trivy.javaDbRepository: "mirror.gcr.io/aquasec/trivy-java-db"
   trivy.command: "image"
   trivy.sbomSources: ""
   trivy.dbRepositoryInsecure: "false"
-  trivy.useBuiltinRegoPolicies: "true"
-  trivy.useEmbeddedRegoPolicies: "false"
+  trivy.useBuiltinRegoPolicies: "false"
+  trivy.useEmbeddedRegoPolicies: "true"
   trivy.supportedConfigAuditKinds: "Workload,Service,Role,ClusterRole,NetworkPolicy,Ingress,LimitRange,ResourceQuota"
   trivy.timeout: "5m0s"
   trivy.mode: "Standalone"
@@ -3066,7 +3080,7 @@ metadata:
   labels:
     app.kubernetes.io/name: trivy-operator
     app.kubernetes.io/instance: trivy-operator
-    app.kubernetes.io/version: "0.22.0"
+    app.kubernetes.io/version: "0.30.1"
     app.kubernetes.io/managed-by: kubectl
 data:
 ---
@@ -3079,7 +3093,7 @@ metadata:
   labels:
     app.kubernetes.io/name: trivy-operator
     app.kubernetes.io/instance: trivy-operator
-    app.kubernetes.io/version: "0.22.0"
+    app.kubernetes.io/version: "0.30.1"
     app.kubernetes.io/managed-by: kubectl
 data:
 ---
@@ -3092,7 +3106,7 @@ metadata:
   labels:
     app.kubernetes.io/name: trivy-operator
     app.kubernetes.io/instance: trivy-operator
-    app.kubernetes.io/version: "0.22.0"
+    app.kubernetes.io/version: "0.30.1"
     app.kubernetes.io/managed-by: kubectl
 spec:
   replicas: 1
@@ -3104,6 +3118,8 @@ spec:
       app.kubernetes.io/instance: trivy-operator
   template:
     metadata:
+      annotations:
+        checksum/config: 31d4af34c2224d1fca88bd22b862d4a01ff98f99897807ca53944b3115c34420
       labels:
         app.kubernetes.io/name: trivy-operator
         app.kubernetes.io/instance: trivy-operator
@@ -3112,7 +3128,7 @@ spec:
       automountServiceAccountToken: true
       containers:
         - name: "trivy-operator"
-          image: "ghcr.io/aquasecurity/trivy-operator:0.22.0"
+          image: "mirror.gcr.io/aquasec/trivy-operator:0.30.1"
           imagePullPolicy: IfNotPresent
           env:
             - name: OPERATOR_NAMESPACE
@@ -3173,7 +3189,7 @@ metadata:
   labels:
     app.kubernetes.io/name: trivy-operator
     app.kubernetes.io/instance: trivy-operator
-    app.kubernetes.io/version: "0.22.0"
+    app.kubernetes.io/version: "0.30.1"
     app.kubernetes.io/managed-by: kubectl
 spec:
   clusterIP: None
@@ -3198,22 +3214,12 @@ rules:
   - ""
   resources:
   - configmaps
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
-  - ""
-  resources:
   - limitranges
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
-  - ""
-  resources:
   - nodes
+  - pods
+  - replicationcontrollers
+  - resourcequotas
+  - services
   verbs:
   - get
   - list
@@ -3221,11 +3227,9 @@ rules:
 - apiGroups:
   - ""
   resources:
-  - pods
+  - namespaces
   verbs:
   - get
-  - list
-  - watch
 - apiGroups:
   - ""
   resources:
@@ -3233,30 +3237,6 @@ rules:
   verbs:
   - get
   - list
-- apiGroups:
-  - ""
-  resources:
-  - replicationcontrollers
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
-  - ""
-  resources:
-  - resourcequotas
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
-  - ""
-  resources:
-  - services
-  verbs:
-  - get
-  - list
-  - watch
 - apiGroups:
   - apiextensions.k8s.io
   resources:
@@ -3269,29 +3249,8 @@ rules:
   - apps
   resources:
   - daemonsets
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
-  - apps
-  resources:
   - deployments
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
-  - apps
-  resources:
   - replicasets
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
-  - apps
-  resources:
   - statefulsets
   verbs:
   - get
@@ -3309,18 +3268,18 @@ rules:
   - aquasecurity.github.io
   resources:
   - clustercompliancedetailreports
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - aquasecurity.github.io
-  resources:
   - clustercompliancereports
+  - clusterconfigauditreports
+  - clusterinfraassessmentreports
+  - clusterrbacassessmentreports
+  - clustersbomreports
+  - clustervulnerabilityreports
+  - configauditreports
+  - exposedsecretreports
+  - infraassessmentreports
+  - rbacassessmentreports
+  - sbomreports
+  - vulnerabilityreports
   verbs:
   - create
   - delete
@@ -3337,138 +3296,6 @@ rules:
   - get
   - patch
   - update
-- apiGroups:
-  - aquasecurity.github.io
-  resources:
-  - clusterconfigauditreports
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - aquasecurity.github.io
-  resources:
-  - clusterinfraassessmentreports
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - aquasecurity.github.io
-  resources:
-  - clusterrbacassessmentreports
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - aquasecurity.github.io
-  resources:
-  - clustersbomreports
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - aquasecurity.github.io
-  resources:
-  - clustervulnerabilityreports
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - aquasecurity.github.io
-  resources:
-  - configauditreports
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - aquasecurity.github.io
-  resources:
-  - exposedsecretreports
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - aquasecurity.github.io
-  resources:
-  - infraassessmentreports
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - aquasecurity.github.io
-  resources:
-  - rbacassessmentreports
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - aquasecurity.github.io
-  resources:
-  - sbomreports
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - aquasecurity.github.io
-  resources:
-  - vulnerabilityreports
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
 - apiGroups:
   - batch
   resources:
@@ -3491,13 +3318,6 @@ rules:
   - networking.k8s.io
   resources:
   - ingresses
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
-  - networking.k8s.io
-  resources:
   - networkpolicies
   verbs:
   - get
@@ -3507,29 +3327,8 @@ rules:
   - rbac.authorization.k8s.io
   resources:
   - clusterrolebindings
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
-  - rbac.authorization.k8s.io
-  resources:
   - clusterroles
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
-  - rbac.authorization.k8s.io
-  resources:
   - rolebindings
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
-  - rbac.authorization.k8s.io
-  resources:
   - roles
   verbs:
   - get
@@ -3564,7 +3363,7 @@ metadata:
   labels:
     app.kubernetes.io/name: trivy-operator
     app.kubernetes.io/instance: trivy-operator
-    app.kubernetes.io/version: "0.22.0"
+    app.kubernetes.io/version: "0.30.1"
     app.kubernetes.io/managed-by: kubectl
 roleRef:
   apiGroup: rbac.authorization.k8s.io
@@ -3585,7 +3384,7 @@ metadata:
   labels:
     app.kubernetes.io/name: trivy-operator
     app.kubernetes.io/instance: trivy-operator
-    app.kubernetes.io/version: "0.22.0"
+    app.kubernetes.io/version: "0.30.1"
     app.kubernetes.io/managed-by: kubectl
 rules:
   - apiGroups:
@@ -3612,7 +3411,7 @@ metadata:
   labels:
     app.kubernetes.io/name: trivy-operator
     app.kubernetes.io/instance: trivy-operator
-    app.kubernetes.io/version: "0.22.0"
+    app.kubernetes.io/version: "0.30.1"
     app.kubernetes.io/managed-by: kubectl
 roleRef:
   apiGroup: rbac.authorization.k8s.io
@@ -3632,7 +3431,7 @@ metadata:
   labels:
     app.kubernetes.io/name: trivy-operator
     app.kubernetes.io/instance: trivy-operator
-    app.kubernetes.io/version: "0.22.0"
+    app.kubernetes.io/version: "0.30.1"
     app.kubernetes.io/managed-by: kubectl
 rules:
   - apiGroups:
@@ -3652,6 +3451,7 @@ rules:
       - create
       - get
       - delete
+      - update
 ---
 # Source: trivy-operator/templates/rbac/rolebinding.yaml
 apiVersion: rbac.authorization.k8s.io/v1
@@ -3662,7 +3462,7 @@ metadata:
   labels:
     app.kubernetes.io/name: trivy-operator
     app.kubernetes.io/instance: trivy-operator
-    app.kubernetes.io/version: "0.22.0"
+    app.kubernetes.io/version: "0.30.1"
     app.kubernetes.io/managed-by: kubectl
 roleRef:
   apiGroup: rbac.authorization.k8s.io
@@ -3682,7 +3482,7 @@ metadata:
   labels:
     app.kubernetes.io/name: trivy-operator
     app.kubernetes.io/instance: trivy-operator
-    app.kubernetes.io/version: "0.22.0"
+    app.kubernetes.io/version: "0.30.1"
     app.kubernetes.io/managed-by: kubectl
     rbac.authorization.k8s.io/aggregate-to-view: "true"
     rbac.authorization.k8s.io/aggregate-to-edit: "true"
@@ -3707,7 +3507,7 @@ metadata:
   labels:
     app.kubernetes.io/name: trivy-operator
     app.kubernetes.io/instance: trivy-operator
-    app.kubernetes.io/version: "0.22.0"
+    app.kubernetes.io/version: "0.30.1"
     app.kubernetes.io/managed-by: kubectl
     rbac.authorization.k8s.io/aggregate-to-view: "true"
     rbac.authorization.k8s.io/aggregate-to-edit: "true"
@@ -3732,7 +3532,7 @@ metadata:
   labels:
     app.kubernetes.io/name: trivy-operator
     app.kubernetes.io/instance: trivy-operator
-    app.kubernetes.io/version: "0.22.0"
+    app.kubernetes.io/version: "0.30.1"
     app.kubernetes.io/managed-by: kubectl
     rbac.authorization.k8s.io/aggregate-to-view: "true"
     rbac.authorization.k8s.io/aggregate-to-edit: "true"
@@ -3757,5 +3557,5 @@ metadata:
   labels:
     app.kubernetes.io/name: trivy-operator
     app.kubernetes.io/instance: trivy-operator
-    app.kubernetes.io/version: "0.22.0"
+    app.kubernetes.io/version: "0.30.1"
     app.kubernetes.io/managed-by: kubectl

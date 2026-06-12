@@ -5,9 +5,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/aquasecurity/trivy-operator/pkg/apis/aquasecurity/v1alpha1"
-	"github.com/aquasecurity/trivy-operator/pkg/kube"
-	"github.com/aquasecurity/trivy-operator/pkg/trivyoperator"
+	"github.com/aws/aws-sdk-go-v2/aws/arn"
+	containerimage "github.com/google/go-containerregistry/pkg/name"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -16,8 +15,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 
-	"github.com/aws/aws-sdk-go/aws/arn"
-	containerimage "github.com/google/go-containerregistry/pkg/name"
+	"github.com/aquasecurity/trivy-operator/pkg/apis/aquasecurity/v1alpha1"
+	"github.com/aquasecurity/trivy-operator/pkg/kube"
+	"github.com/aquasecurity/trivy-operator/pkg/trivyoperator"
 )
 
 type ReportBuilder struct {
@@ -29,6 +29,7 @@ type ReportBuilder struct {
 	resourceLabelsToInclude []string
 	additionalReportLabels  labels.Set
 	cacheTTL                *time.Duration
+	reportTTL               *time.Duration
 }
 
 func NewReportBuilder(scheme *runtime.Scheme) *ReportBuilder {
@@ -54,6 +55,11 @@ func (b *ReportBuilder) PodSpecHash(hash string) *ReportBuilder {
 
 func (b *ReportBuilder) Data(data v1alpha1.SbomReportData) *ReportBuilder {
 	b.data = data
+	return b
+}
+
+func (b *ReportBuilder) ReportTTL(ttl *time.Duration) *ReportBuilder {
+	b.reportTTL = ttl
 	return b
 }
 
@@ -99,7 +105,8 @@ func ParseReference(ref string) (containerimage.Reference, error) {
 
 func (b *ReportBuilder) NamespacedReport() (v1alpha1.SbomReport, error) {
 	reportLabels := map[string]string{
-		trivyoperator.LabelContainerName: b.container,
+		trivyoperator.LabelContainerName:   b.container,
+		trivyoperator.LabelK8SAppManagedBy: trivyoperator.AppTrivyOperator,
 	}
 
 	// append matching resource labels by config to report
@@ -119,6 +126,13 @@ func (b *ReportBuilder) NamespacedReport() (v1alpha1.SbomReport, error) {
 		},
 		Report: b.data,
 	}
+
+	if b.reportTTL != nil {
+		report.Annotations = map[string]string{
+			v1alpha1.TTLReportAnnotation: b.reportTTL.String(),
+		}
+	}
+
 	err := kube.ObjectToObjectMeta(b.controller, &report.ObjectMeta)
 	if err != nil {
 		return v1alpha1.SbomReport{}, err
@@ -151,6 +165,7 @@ func (b *ReportBuilder) ClusterReport() v1alpha1.ClusterSbomReport {
 	artifactRef := ArtifactRef(b.data)
 	reportLabels := map[string]string{
 		trivyoperator.LabelResourceImageID: artifactRef,
+		trivyoperator.LabelK8SAppManagedBy: trivyoperator.AppTrivyOperator,
 	}
 	kube.AppendCustomLabels(b.additionalReportLabels, reportLabels)
 	clusterReport := v1alpha1.ClusterSbomReport{
@@ -159,6 +174,11 @@ func (b *ReportBuilder) ClusterReport() v1alpha1.ClusterSbomReport {
 			Labels: reportLabels,
 		},
 		Report: b.data,
+	}
+	if b.reportTTL != nil {
+		clusterReport.Annotations = map[string]string{
+			v1alpha1.TTLReportAnnotation: b.reportTTL.String(),
+		}
 	}
 	if b.cacheTTL != nil {
 		clusterReport.Annotations = map[string]string{

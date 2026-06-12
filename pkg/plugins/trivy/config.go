@@ -2,27 +2,23 @@ package trivy
 
 import (
 	"fmt"
-
+	"path"
 	"path/filepath"
-
 	"strconv"
 	"strings"
 
-	"github.com/aquasecurity/trivy-operator/pkg/utils"
-	"github.com/aquasecurity/trivy-operator/pkg/vulnerabilityreport"
-
-	"github.com/aquasecurity/trivy-operator/pkg/trivyoperator"
-
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
-
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/aquasecurity/trivy-operator/pkg/trivyoperator"
+	"github.com/aquasecurity/trivy-operator/pkg/utils"
+	"github.com/aquasecurity/trivy-operator/pkg/vulnerabilityreport"
 )
 
 const (
-	keyTrivyImageRepository = "trivy.repository"
-	keyTrivyImageTag        = "trivy.tag"
-	//nolint:gosec
+	keyTrivyImageRepository                     = "trivy.repository"
+	keyTrivyImageTag                            = "trivy.tag"
 	keyTrivyImagePullSecret                     = "trivy.imagePullSecret"
 	keyTrivyImagePullPolicy                     = "trivy.imagePullPolicy"
 	keyTrivyMode                                = "trivy.mode"
@@ -36,6 +32,7 @@ const (
 	keyTrivyOfflineScan                         = "trivy.offlineScan"
 	keyTrivyTimeout                             = "trivy.timeout"
 	keyTrivyIgnoreFile                          = "trivy.ignoreFile"
+	keyTrivyIgnoreFileName                      = "trivy.ignoreFileName"
 	keyTrivyIgnorePolicy                        = "trivy.ignorePolicy"
 	keyTrivyInsecureRegistryPrefix              = "trivy.insecureRegistry."
 	keyTrivyNonSslRegistryPrefix                = "trivy.nonSslRegistry."
@@ -45,15 +42,15 @@ const (
 	keyTrivyNoProxy                             = "trivy.noProxy"
 	keyTrivySslCertDir                          = "trivy.sslCertDir"
 	keyIncludeDevDeps                           = "trivy.includeDevDeps"
-	// nolint:gosec // This is not a secret, but a configuration value.
-	keyTrivyGitHubToken          = "trivy.githubToken"
-	keyTrivySkipFiles            = "trivy.skipFiles"
-	keyTrivySkipDirs             = "trivy.skipDirs"
-	keyTrivyDBRepository         = "trivy.dbRepository"
-	keyTrivyDBRepositoryUsername = "trivy.dbRepositoryUsername"
-	keyTrivyDBRepositoryPassword = "trivy.dbRepositoryPassword" // #nosec G101
-	keyTrivyJavaDBRepository     = "trivy.javaDbRepository"
-	keyTrivyDBRepositoryInsecure = "trivy.dbRepositoryInsecure"
+	keyTrivyConfigFile                          = "trivy.configFile"
+	keyTrivyGitHubToken                         = "trivy.githubToken"
+	keyTrivySkipFiles                           = "trivy.skipFiles"
+	keyTrivySkipDirs                            = "trivy.skipDirs"
+	keyTrivyDBRepository                        = "trivy.dbRepository"
+	keyTrivyDBRepositoryUsername                = "trivy.dbRepositoryUsername"
+	keyTrivyDBRepositoryPassword                = "trivy.dbRepositoryPassword" // #nosec G101
+	keyTrivyJavaDBRepository                    = "trivy.javaDbRepository"
+	keyTrivyDBRepositoryInsecure                = "trivy.dbRepositoryInsecure"
 
 	keyTrivyUseBuiltinRegoPolicies    = "trivy.useBuiltinRegoPolicies"
 	keyTrivyUseEmbeddedRegoPolicies   = "trivy.useEmbeddedRegoPolicies"
@@ -64,12 +61,10 @@ const (
 	keyTrivySkipJavaDBUpdate       = "trivy.skipJavaDBUpdate"
 	keyTrivyImageScanCacheDir      = "trivy.imageScanCacheDir"
 	keyTrivyFilesystemScanCacheDir = "trivy.filesystemScanCacheDir"
-	// nolint:gosec // This is not a secret, but a configuration value.
-	keyTrivyServerTokenHeader = "trivy.serverTokenHeader"
-	keyTrivyServerInsecure    = "trivy.serverInsecure"
-	// nolint:gosec // This is not a secret, but a configuration value.
-	keyTrivyServerToken         = "trivy.serverToken"
-	keyTrivyServerCustomHeaders = "trivy.serverCustomHeaders"
+	keyTrivyServerTokenHeader      = "trivy.serverTokenHeader"
+	keyTrivyServerInsecure         = "trivy.serverInsecure"
+	keyTrivyServerToken            = "trivy.serverToken"
+	keyTrivyServerCustomHeaders    = "trivy.serverCustomHeaders"
 
 	keyResourcesRequestsCPU             = "trivy.resources.requests.cpu"
 	keyResourcesRequestsMemory          = "trivy.resources.requests.memory"
@@ -233,6 +228,14 @@ func (c Config) GetSkipJavaDBUpdate() bool {
 	return boolVal
 }
 
+func (c Config) GetJavaDBRepository() string {
+	val, ok := c.Data[keyTrivyJavaDBRepository]
+	if !ok {
+		return ""
+	}
+	return val
+}
+
 func (c Config) TrivyDBRepositoryCredentialsSet() bool {
 	_, userOk := c.SecretData[keyTrivyDBRepositoryUsername]
 	_, passOk := c.SecretData[keyTrivyDBRepositoryPassword]
@@ -324,7 +327,7 @@ func (c Config) GetVulnType() string {
 		return ""
 	}
 	trimmedVulnType := strings.TrimSpace(val)
-	if !(trimmedVulnType == "os" || trimmedVulnType == "library") {
+	if trimmedVulnType != "os" && trimmedVulnType != "library" {
 		return ""
 	}
 	return trimmedVulnType
@@ -340,6 +343,27 @@ func (c Config) GetSupportedConfigAuditKinds() []string {
 
 func (c Config) IgnoreFileExists() bool {
 	_, ok := c.Data[keyTrivyIgnoreFile]
+	return ok
+}
+
+// GetIgnoreFileName returns the ignore file name to be mounted inside the scanner container.
+// Defaults to the package-level default (".trivyignore") when not explicitly set.
+func (c Config) GetIgnoreFileName() string {
+	if v, ok := c.Data[keyTrivyIgnoreFileName]; ok {
+		v = strings.TrimSpace(v)
+		if v != "" {
+			return v
+		}
+	}
+	return ignoreFileName
+}
+
+// IgnoreFileMountPath returns full mount path for the ignore file.
+func (c Config) IgnoreFileMountPath() string {
+	return path.Join("/etc", "trivy", c.GetIgnoreFileName())
+}
+func (c Config) ConfigFileExists() bool {
+	_, ok := c.Data[keyTrivyConfigFile]
 	return ok
 }
 
@@ -381,7 +405,7 @@ func (c Config) GenerateIgnoreFileVolumeIfAvailable(trivyConfigName string) (*co
 				Items: []corev1.KeyToPath{
 					{
 						Key:  keyTrivyIgnoreFile,
-						Path: ignoreFileName,
+						Path: c.GetIgnoreFileName(),
 					},
 				},
 			},
@@ -389,15 +413,43 @@ func (c Config) GenerateIgnoreFileVolumeIfAvailable(trivyConfigName string) (*co
 	}
 	volumeMount := corev1.VolumeMount{
 		Name:      ignoreFileVolumeName,
-		MountPath: ignoreFileMountPath,
-		SubPath:   ignoreFileName,
+		MountPath: c.IgnoreFileMountPath(),
+		SubPath:   c.GetIgnoreFileName(),
 	}
 	return &volume, &volumeMount
 }
 
-func (c Config) GenerateSslCertDirVolumeIfAvailable(trivyConfigName string) (*corev1.Volume, *corev1.VolumeMount) {
+func (c Config) GenerateConfigFileVolumeIfAvailable(trivyConfigName string) (*corev1.Volume, *corev1.VolumeMount) {
+	if !c.ConfigFileExists() {
+		return nil, nil
+	}
+	volume := corev1.Volume{
+		Name: configFileVolumeName,
+		VolumeSource: corev1.VolumeSource{
+			ConfigMap: &corev1.ConfigMapVolumeSource{
+				LocalObjectReference: corev1.LocalObjectReference{
+					Name: trivyConfigName,
+				},
+				Items: []corev1.KeyToPath{
+					{
+						Key:  keyTrivyConfigFile,
+						Path: configFileName,
+					},
+				},
+			},
+		},
+	}
+	volumeMount := corev1.VolumeMount{
+		Name:      configFileVolumeName,
+		MountPath: configFileMountPath,
+		SubPath:   configFileName,
+	}
+	return &volume, &volumeMount
+}
+
+func (c Config) GenerateSslCertDirVolumeIfAvailable(_ string) (*corev1.Volume, *corev1.VolumeMount) {
 	var sslCertDirHost string
-	if sslCertDirHost = c.GetSslCertDir(); len(sslCertDirHost) == 0 {
+	if sslCertDirHost = c.GetSslCertDir(); sslCertDirHost == "" {
 		return nil, nil
 	}
 	volume := corev1.Volume{

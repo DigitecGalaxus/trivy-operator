@@ -5,19 +5,21 @@ import (
 	"testing"
 	"time"
 
-	"github.com/aquasecurity/trivy-operator/pkg/operator"
-	"github.com/aquasecurity/trivy-operator/pkg/operator/etc"
-	"github.com/aquasecurity/trivy-operator/pkg/trivyoperator"
-	"github.com/aquasecurity/trivy-operator/tests/itest/helper"
-	"github.com/aquasecurity/trivy-operator/tests/itest/trivy-operator/behavior"
-	. "github.com/onsi/ginkgo/v2"
-	. "github.com/onsi/gomega"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
+
+	"github.com/aquasecurity/trivy-operator/pkg/operator"
+	"github.com/aquasecurity/trivy-operator/pkg/operator/etc"
+	"github.com/aquasecurity/trivy-operator/pkg/trivyoperator"
+	"github.com/aquasecurity/trivy-operator/tests/itest/helper"
+	"github.com/aquasecurity/trivy-operator/tests/itest/trivy-operator/behavior"
+
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
 )
 
 var (
@@ -51,6 +53,8 @@ var _ = BeforeSuite(func() {
 	operatorConfig, err := etc.GetOperatorConfig()
 	Expect(err).ToNot(HaveOccurred())
 
+	ApplyTestConfiguration(&operatorConfig)
+
 	logf.SetLogger(zap.New(zap.WriteTo(GinkgoWriter), zap.UseDevMode(operatorConfig.LogDevMode)))
 
 	kubeConfig, err := ctrl.GetConfig()
@@ -64,6 +68,7 @@ var _ = BeforeSuite(func() {
 
 	inputs = behavior.Inputs{
 		AssertTimeout:         5 * time.Minute,
+		PollingInterval:       5 * time.Second,
 		PrimaryNamespace:      corev1.NamespaceDefault,
 		PrimaryWorkloadPrefix: "wordpress",
 		Client:                kubeClient,
@@ -80,6 +85,12 @@ var _ = BeforeSuite(func() {
 	}()
 
 })
+
+func ApplyTestConfiguration(operatorConfig *etc.Config) {
+	// Default is 0. Set to 30 seconds for testing scan job TTL behavior.
+	scanJobTTL := 30 * time.Second
+	operatorConfig.ScanJobTTL = &scanJobTTL
+}
 
 var _ = AfterSuite(func() {
 	By("Stopping Trivy operator")

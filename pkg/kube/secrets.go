@@ -5,10 +5,11 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/aquasecurity/trivy-operator/pkg/docker"
 	corev1 "k8s.io/api/core/v1"
 	k8sapierror "k8s.io/apimachinery/pkg/api/errors"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/aquasecurity/trivy-operator/pkg/docker"
 )
 
 // MapContainerNamesToDockerAuths creates the mapping from a container name to the Docker authentication
@@ -27,7 +28,7 @@ func MapContainerNamesToDockerAuths(images ContainerImages, auths map[string]doc
 			mapping[containerName] = auth
 		}
 		if len(wildcardServers) > 0 {
-			if wildcardDomain := matchSubDomain(wildcardServers, server); len(wildcardDomain) > 0 {
+			if wildcardDomain := matchSubDomain(wildcardServers, server); wildcardDomain != "" {
 				if auth, ok := auths[wildcardDomain]; ok {
 					mapping[containerName] = auth
 				}
@@ -124,7 +125,7 @@ const (
 type SecretsReader interface {
 	ListByLocalObjectReferences(ctx context.Context, refs []corev1.LocalObjectReference, ns string) ([]corev1.Secret, error)
 	ListImagePullSecretsByPodSpec(ctx context.Context, spec corev1.PodSpec, ns string) ([]corev1.Secret, error)
-	CredentialsByServer(ctx context.Context, workload client.Object, secretsInfo map[string]string, multiSecretSupport bool) (map[string]docker.Auth, error)
+	CredentialsByServer(ctx context.Context, workload client.Object, secretsInfo map[string]string, multiSecretSupport bool, globalAccessEnabled bool) (map[string]docker.Auth, error)
 }
 
 // NewSecretsReader constructs a new SecretsReader which is using the client
@@ -208,19 +209,28 @@ func (r *secretsReader) GetSecretsFromEnv(ctx context.Context, secretsInfo map[s
 	return secretsFromEnv, nil
 }
 
-func (r *secretsReader) CredentialsByServer(ctx context.Context, workload client.Object, secretsInfo map[string]string, multiSecretSupport bool) (map[string]docker.Auth, error) {
-	spec, err := GetPodSpec(workload)
-	if err != nil {
-		return nil, fmt.Errorf("getting Pod template: %w", err)
+func (r *secretsReader) CredentialsByServer(ctx context.Context, workload client.Object, secretsInfo map[string]string, multiSecretSupport, globalAccessEnabled bool) (map[string]docker.Auth, error) {
+	var imagePullSecrets []corev1.Secret
+
+	if globalAccessEnabled {
+		spec, err := GetPodSpec(workload)
+		if err != nil {
+			return nil, fmt.Errorf("getting Pod template: %w", err)
+		}
+
+		imagePullSecretsFromSpec, err := r.ListImagePullSecretsByPodSpec(ctx, spec, workload.GetNamespace())
+		if err != nil {
+			return nil, err
+		}
+
+		imagePullSecrets = append(imagePullSecrets, imagePullSecretsFromSpec...)
 	}
-	imagePullSecrets, err := r.ListImagePullSecretsByPodSpec(ctx, spec, workload.GetNamespace())
-	if err != nil {
-		return nil, err
-	}
+
 	secretsFromEnv, err := r.GetSecretsFromEnv(ctx, secretsInfo)
 	if err != nil {
 		return nil, err
 	}
+
 	imagePullSecrets = append(imagePullSecrets, secretsFromEnv...)
 
 	return MapDockerRegistryServersToAuths(imagePullSecrets, multiSecretSupport)

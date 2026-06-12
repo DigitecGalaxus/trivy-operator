@@ -5,10 +5,11 @@ metadata:
   generation: 1
   labels:
     plugin-config-hash: <HASH>
-    resource-spec-hash: <HASH>
-    trivy-operator.resource.kind: Job
-    trivy-operator.resource.name: pi
-    trivy-operator.resource.namespace: default
+    annotation.resource-spec-hash: <HASH>
+    annotation.trivy-operator.resource.kind: Job
+    annotation.trivy-operator.resource.name: pi
+    annotation.trivy-operator.resource.namespace: default
+    app.kubernetes.io/managed-by: trivy-operator
   name: job-pi
   namespace: default
   ownerReferences:

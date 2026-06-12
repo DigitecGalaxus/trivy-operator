@@ -16,11 +16,11 @@ metadata:
   name: replicaset-nginx-6d4cf56db6
   namespace: default
   labels:
-    trivy-operator.resource.kind: ReplicaSet
-    trivy-operator.resource.name: nginx-6d4cf56db6
-    trivy-operator.resource.namespace: default
+    annotation.trivy-operator.resource.kind: ReplicaSet
+    annotation.trivy-operator.resource.name: nginx-6d4cf56db6
+    annotation.trivy-operator.resource.namespace: default
     plugin-config-hash: 7f65d98b75
-    resource-spec-hash: 7cb64cb677
+    annotation.resource-spec-hash: 7cb64cb677
   uid: d5cf8847-c96d-4534-beb9-514a34230302
   ownerReferences:
     - apiVersion: apps/v1
@@ -34,7 +34,7 @@ report:
   scanner:
     name: Trivy 
     vendor: Aqua Security
-    version: '0.22.0'
+    version: '0.69.3'
   summary:
     criticalCount: 2
     highCount: 0

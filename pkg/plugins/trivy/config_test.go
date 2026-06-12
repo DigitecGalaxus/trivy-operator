@@ -1,27 +1,22 @@
 package trivy
 
 import (
-	"context"
-	"time"
-
 	"testing"
-
-	"github.com/aquasecurity/trivy-operator/pkg/ext"
-	"github.com/aquasecurity/trivy-operator/pkg/kube"
-	"github.com/aquasecurity/trivy-operator/pkg/vulnerabilityreport"
-
-	"github.com/aquasecurity/trivy-operator/pkg/trivyoperator"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
-
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
-
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+
+	"github.com/aquasecurity/trivy-operator/pkg/ext"
+	"github.com/aquasecurity/trivy-operator/pkg/kube"
+	"github.com/aquasecurity/trivy-operator/pkg/trivyoperator"
+	"github.com/aquasecurity/trivy-operator/pkg/vulnerabilityreport"
 )
 
 var (
@@ -118,12 +113,12 @@ func TestConfig_GetAdditionalVulnerabilityReportFields(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			addFields := tc.configData.GetAdditionalVulnerabilityReportFields()
-			assert.True(t, addFields.Description == tc.additionalFields.Description)
-			assert.True(t, addFields.CVSS == tc.additionalFields.CVSS)
-			assert.True(t, addFields.Target == tc.additionalFields.Target)
-			assert.True(t, addFields.PackageType == tc.additionalFields.PackageType)
-			assert.True(t, addFields.Class == tc.additionalFields.Class)
-			assert.True(t, addFields.Links == tc.additionalFields.Links)
+			assert.Equal(t, tc.additionalFields.Description, addFields.Description)
+			assert.Equal(t, tc.additionalFields.CVSS, addFields.CVSS)
+			assert.Equal(t, tc.additionalFields.Target, addFields.Target)
+			assert.Equal(t, tc.additionalFields.PackageType, addFields.PackageType)
+			assert.Equal(t, tc.additionalFields.Class, addFields.Class)
+			assert.Equal(t, tc.additionalFields.Links, addFields.Links)
 		})
 	}
 }
@@ -212,7 +207,7 @@ func TestGetSlow(t *testing.T) {
 		{
 			name: "slow param set to no  value",
 			configData: Config{PluginConfig: trivyoperator.PluginConfig{
-				Data: map[string]string{},
+				Data: make(map[string]string),
 			}},
 			want: true,
 		},
@@ -220,7 +215,7 @@ func TestGetSlow(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			got := tc.configData.GetSlow()
-			assert.Equal(t, got, tc.want)
+			assert.Equal(t, tc.want, got)
 
 		})
 	}
@@ -244,7 +239,7 @@ func TestConfig_GetCommand(t *testing.T) {
 		{
 			name: "Should return image when value is not set",
 			configData: Config{PluginConfig: trivyoperator.PluginConfig{
-				Data: map[string]string{},
+				Data: make(map[string]string),
 			}},
 			expectedCommand: Image,
 		},
@@ -281,6 +276,62 @@ func TestConfig_GetCommand(t *testing.T) {
 			command := tc.configData.GetCommand()
 			assert.Equal(t, tc.expectedCommand, command)
 
+		})
+	}
+}
+
+func TestConfig_GenerateConfigFile(t *testing.T) {
+	const localTrivyConfigName = "trivy"
+	tests := []struct {
+		name        string
+		configData  Config
+		volume      *corev1.Volume
+		volumeMount *corev1.VolumeMount
+	}{
+		{
+			name: "good way with config data",
+			configData: Config{
+				PluginConfig: trivyoperator.PluginConfig{
+					Data: map[string]string{
+						"trivy.configFile": "severity: HIGH",
+					},
+				},
+			},
+			volume: &corev1.Volume{
+				Name: "configfile",
+				VolumeSource: corev1.VolumeSource{
+					ConfigMap: &corev1.ConfigMapVolumeSource{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: localTrivyConfigName,
+						},
+						Items: []corev1.KeyToPath{
+							{
+								Key:  "trivy.configFile",
+								Path: "trivy-config.yaml",
+							},
+						},
+					},
+				},
+			},
+			volumeMount: &corev1.VolumeMount{
+				Name:      "configfile",
+				MountPath: "/etc/trivy/trivy-config.yaml",
+				SubPath:   "trivy-config.yaml",
+			},
+		},
+		{
+			name:        "without config",
+			configData:  Config{},
+			volume:      nil,
+			volumeMount: nil,
+		},
+	}
+
+	for _, test := range tests {
+		t.Run(test.name, func(t *testing.T) {
+			v, vm := test.configData.GenerateConfigFileVolumeIfAvailable(localTrivyConfigName)
+			assert.Equal(t, test.volume, v)
+			assert.Equal(t, test.volumeMount, vm)
 		})
 	}
 }
@@ -331,7 +382,7 @@ func TestVulnType(t *testing.T) {
 	for _, tc := range testCases {
 		t.Run(tc.name, func(t *testing.T) {
 			got := tc.configData.GetVulnType()
-			assert.Equal(t, got, tc.want)
+			assert.Equal(t, tc.want, got)
 
 		})
 	}
@@ -569,7 +620,7 @@ func TestConfig_dbRepositoryInsecure(t *testing.T) {
 		{
 			name: "no value Should return false",
 			configData: Config{PluginConfig: trivyoperator.PluginConfig{
-				Data: map[string]string{},
+				Data: make(map[string]string),
 			}},
 			expectedOutput: false,
 		},
@@ -707,9 +758,9 @@ func TestPlugin_Init(t *testing.T) {
 			Get()
 		p := NewPlugin(fixedClock, ext.NewSimpleIDGenerator(), &or)
 		err := p.Init(pluginContext)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		var cm corev1.ConfigMap
-		err = testClient.Get(context.Background(), types.NamespacedName{
+		err = testClient.Get(t.Context(), types.NamespacedName{
 			Namespace: "trivyoperator-ns",
 			Name:      "trivy-operator-trivy-config",
 		}, &cm)
@@ -725,7 +776,7 @@ func TestPlugin_Init(t *testing.T) {
 			},
 			Data: map[string]string{
 				"trivy.repository":                DefaultImageRepository,
-				"trivy.tag":                       "0.52.2",
+				"trivy.tag":                       "0.69.3",
 				"trivy.severity":                  DefaultSeverity,
 				"trivy.slow":                      "true",
 				"trivy.mode":                      string(Standalone),
@@ -745,10 +796,6 @@ func TestPlugin_Init(t *testing.T) {
 	t.Run("Should not overwrite existing config", func(t *testing.T) {
 		testClient := fake.NewClientBuilder().WithObjects(
 			&corev1.ConfigMap{
-				TypeMeta: metav1.TypeMeta{
-					APIVersion: "v1",
-					Kind:       "ConfigMap",
-				},
 				ObjectMeta: metav1.ObjectMeta{
 					Name:            "trivy-operator-trivy-config",
 					Namespace:       "trivyoperator-ns",
@@ -772,18 +819,14 @@ func TestPlugin_Init(t *testing.T) {
 
 		p := NewPlugin(fixedClock, ext.NewSimpleIDGenerator(), &resolver)
 		err := p.Init(pluginContext)
-		assert.NoError(t, err)
+		require.NoError(t, err)
 		var cm corev1.ConfigMap
-		err = testClient.Get(context.Background(), types.NamespacedName{
+		err = testClient.Get(t.Context(), types.NamespacedName{
 			Namespace: "trivyoperator-ns",
 			Name:      "trivy-operator-trivy-config",
 		}, &cm)
 		require.NoError(t, err)
 		assert.Equal(t, corev1.ConfigMap{
-			TypeMeta: metav1.TypeMeta{
-				APIVersion: "v1",
-				Kind:       "ConfigMap",
-			},
 			ObjectMeta: metav1.ObjectMeta{
 				Name:            "trivy-operator-trivy-config",
 				Namespace:       "trivyoperator-ns",
@@ -879,6 +922,44 @@ func TestPlugin_FindIgnorePolicyKey(t *testing.T) {
 	}
 }
 
+func TestConfig_IgnoreFileMountPath(t *testing.T) {
+	tests := []struct {
+		name     string
+		value    string
+		setKey   bool
+		expected string
+	}{
+		{
+			name:     "default name when unset",
+			setKey:   false,
+			expected: "/etc/trivy/.trivyignore",
+		},
+		{
+			name:     "custom file name",
+			setKey:   true,
+			value:    "custom.ignore",
+			expected: "/etc/trivy/custom.ignore",
+		},
+		{
+			name:     "whitespace falls back to default",
+			setKey:   true,
+			value:    "   ",
+			expected: "/etc/trivy/.trivyignore",
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			cfg := Config{PluginConfig: trivyoperator.PluginConfig{Data: make(map[string]string)}}
+			if tt.setKey {
+				cfg.Data[keyTrivyIgnoreFileName] = tt.value
+			}
+			got := cfg.IgnoreFileMountPath()
+			assert.Equal(t, tt.expected, got)
+		})
+	}
+}
+
 func TestPlugin_GetIncludeDevDeps(t *testing.T) {
 
 	testCases := []struct {
@@ -910,7 +991,7 @@ func TestPlugin_GetIncludeDevDeps(t *testing.T) {
 				},
 			}
 			got := config.GetIncludeDevDeps()
-			assert.Equal(t, got, tc.want)
+			assert.Equal(t, tc.want, got)
 		})
 	}
 }
@@ -923,7 +1004,7 @@ func TestPlugin_GetSbomSources(t *testing.T) {
 	}{
 		{
 			name:       "GetSbomSources not set",
-			configData: map[string]string{},
+			configData: make(map[string]string),
 			want:       "",
 		},
 		{
@@ -942,7 +1023,7 @@ func TestPlugin_GetSbomSources(t *testing.T) {
 				},
 			}
 			got := config.GetSbomSources()
-			assert.Equal(t, got, tc.want)
+			assert.Equal(t, tc.want, got)
 		})
 	}
 }

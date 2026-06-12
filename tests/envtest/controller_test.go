@@ -1,22 +1,22 @@
 package operator_test
 
 import (
-	"sort"
-
-	. "github.com/onsi/ginkgo/v2"
-	. "github.com/onsi/gomega"
-
 	"path"
+	"sort"
 	"time"
 
-	"github.com/aquasecurity/trivy-operator/pkg/apis/aquasecurity/v1alpha1"
-	"github.com/aquasecurity/trivy-operator/pkg/kube"
 	appsv1 "k8s.io/api/apps/v1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	"github.com/aquasecurity/trivy-operator/pkg/apis/aquasecurity/v1alpha1"
+	"github.com/aquasecurity/trivy-operator/pkg/kube"
+
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("Workload controller", func() {
@@ -56,10 +56,11 @@ var _ = Describe("Workload controller", func() {
 		job.ResourceVersion = ""
 		job.CreationTimestamp = metav1.Time{}
 		job.ManagedFields = nil
-		job.Spec.Selector.MatchLabels["controller-uid"] = "<CONTROLLER-UID>"
-		job.Spec.Template.Labels["controller-uid"] = "<CONTROLLER-UID>"
-		job.Spec.Template.Labels["resource-spec-hash"] = "<HASH>"
-		job.Labels["resource-spec-hash"] = "<HASH>"
+		job.Spec.Selector.MatchLabels["annotation.controller-uid"] = "<CONTROLLER-UID>"
+		job.Spec.Template.Labels["annotation.controller-uid"] = "<CONTROLLER-UID>"
+		job.Spec.Template.Labels["annotation.resource-spec-hash"] = "<HASH>"
+		job.Labels["annotation.resource-spec-hash"] = "<HASH>"
+		job.Labels["annotation.controller-uid"] = "<CONTROLLER-UID>"
 		for i := range job.Spec.Template.Spec.InitContainers {
 			job.Spec.Template.Spec.InitContainers[i].Name = "<INIT-CONTAINER-NAME>"
 		}
@@ -100,7 +101,7 @@ var _ = Describe("Workload controller", func() {
 		ca.OwnerReferences[0].UID = ""
 
 		ca.Labels["plugin-config-hash"] = "<HASH>"
-		ca.Labels["resource-spec-hash"] = "<HASH>"
+		ca.Labels["annotation.resource-spec-hash"] = "<HASH>"
 		ca.Report.UpdateTimestamp = metav1.Time{}
 		sort.Sort(ByCheckID(ca.Report.Checks))
 		return ca
@@ -134,8 +135,9 @@ var _ = Describe("Workload controller", func() {
 		ca.Kind = "RbacAssessmentReport"
 		ca.UID = ""
 		ca.SetLabels(map[string]string{
-			"trivy-operator.resource.kind": "Role",
-			"trivy-operator.resource.name": "proxy",
+			"annotation.trivy-operator.resource.kind": "Role",
+			"annotation.trivy-operator.resource.name": "proxy",
+			"annotation.app.kubernetes.io/managed-by": "trivy-operator",
 		})
 		ca.ResourceVersion = ""
 		ca.CreationTimestamp = metav1.Time{}
@@ -168,8 +170,9 @@ var _ = Describe("Workload controller", func() {
 		ca.Kind = "InfraAssessmentReport"
 		ca.UID = ""
 		ca.SetLabels(map[string]string{
-			"trivy-operator.resource.kind":      "Pod",
-			"trivy-operator.resource.namespace": "kube-system",
+			"annotation.app.kubernetes.io/managed-by":      "trivy-operator",
+			"annotation.trivy-operator.resource.kind":      "Pod",
+			"annotation.trivy-operator.resource.namespace": "kube-system",
 		})
 		ca.ResourceVersion = ""
 		ca.CreationTimestamp = metav1.Time{}

@@ -6,7 +6,7 @@ metadata:
   {{- with .Values.operator.annotations }}
   annotations: {{- toYaml . | nindent 4 }}
   {{- end }}
-  labels: 
+  labels:
     {{- include "trivy-operator.labels" . | nindent 4 }}
     {{- with .Values.operator.labels }}
       {{- toYaml . | nindent 4 }}
@@ -22,15 +22,21 @@ spec:
     matchLabels: {{- include "trivy-operator.selectorLabels" . | nindent 6 }}
   template:
     metadata:
-      {{- with .Values.podAnnotations }}
-      annotations: {{- toYaml . | nindent 8 }}
-      {{- end }}
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/configmaps/trivy-operator-config.yaml") . | sha256sum }}
+        {{- with .Values.podAnnotations }}
+          {{- toYaml . | nindent 8 }}
+        {{- end }}
       labels:
         {{- include "trivy-operator.selectorLabels" . | nindent 8 }}
         {{- with .Values.operator.podLabels }}
           {{- toYaml . | nindent 8 }}
         {{- end }}
     spec:
+      {{- if .Values.hostAliases }}
+      hostAliases:
+        {{- toYaml .Values.hostAliases | nindent 8 }}
+      {{- end }}
       serviceAccountName: {{ include "trivy-operator.serviceAccountName" . }}
       automountServiceAccountToken: {{ .Values.automountServiceAccountToken }}
       containers:
@@ -50,6 +56,15 @@ spec:
               value: {{ tpl .Values.targetWorkloads . | quote }}
             - name: OPERATOR_SERVICE_ACCOUNT
               value: {{ include "trivy-operator.serviceAccountName" . | quote }}
+            {{- with .Values.extraEnv }}
+            {{- toYaml . | nindent 12 }}
+            {{- end }}
+          {{- if .Values.alternateReportStorage.enabled }}
+            - name: OPERATOR_ALTERNATE_REPORT_STORAGE_ENABLED
+              value: "true"
+            - name: OPERATOR_ALTERNATE_REPORT_STORAGE_DIR
+              value: {{ .Values.alternateReportStorage.mountPath | quote }}
+          {{- end }}
           envFrom:
             - configMapRef:
                 name: trivy-operator-config
@@ -91,14 +106,37 @@ spec:
           {{- with .Values.volumeMounts }}
           volumeMounts: {{- toYaml . | nindent 12 }}
           {{- end }}
+          {{- if .Values.alternateReportStorage.enabled }}
+          {{- if not .Values.volumeMounts }}
+          volumeMounts:
+          {{- end }}
+            - name: {{ .Values.alternateReportStorage.volumeName }}
+              mountPath: {{ .Values.alternateReportStorage.mountPath }}
+          {{- end }}
       {{- with .Values.image.pullSecrets }}
       imagePullSecrets: {{- toYaml . | nindent 8 }}
       {{- end }}
+      {{- if or (not (empty .Values.podSecurityContext)) .Values.alternateReportStorage.enabled }}
+      securityContext:
       {{- with .Values.podSecurityContext }}
-      securityContext: {{- toYaml . | nindent 8 }}
+        {{ toYaml . | nindent 8 }}
+      {{- end }}
+      # ── but only add runAsUser/fsGroup if alternateReportStorage is on ─────────
+      {{- if .Values.alternateReportStorage.enabled }}
+        runAsUser: {{ .Values.alternateReportStorage.podSecurityContext.runAsUser }}
+        fsGroup:   {{ .Values.alternateReportStorage.podSecurityContext.fsGroup }}
+      {{- end }}
       {{- end }}
       {{- with .Values.volumes }}
       volumes: {{- toYaml . | nindent 8 }}
+      {{- end }}
+      {{- if .Values.alternateReportStorage.enabled }}
+      {{- if not .Values.volumes }}
+      volumes:
+      {{- end }}
+        - name: {{ .Values.alternateReportStorage.volumeName }}
+          persistentVolumeClaim:
+            claimName: {{ .Values.alternateReportStorage.volumeName }}
       {{- end }}
       {{- with .Values.nodeSelector }}
       nodeSelector: {{- toYaml . | nindent 8 }}
